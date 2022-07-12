@@ -22,8 +22,7 @@ outputfolder = os.getenv("DOWNLOADS_FOLDER")
 print("Output folder is: " + outputfolder)
 
 # Get the current working directory of this python script
-__location__ = os.path.realpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 def filemakerGetActive():
     """
@@ -174,7 +173,18 @@ def usernamegen():
         #Add stuff in here to strip out Jr. and the ~ stuff
         last = student["NameLast"].split(",")[0]
         lastMod = last.split("-")[0]
-        lastMod = lastMod.split(" ")[0] #ADD IN WAY TO HANDLE STUDENTS WITH DE+* NAME
+        # Split last name on spaces
+        lastMod = lastMod.split(" ")
+        # If the first part of the last name is 'De', join the rest of the last name together.
+        if lastMod[0] == 'De':
+            if lastMod[1] == 'La':
+                lastMod = ''.join(lastMod)
+            else:
+                lastMod = ''.join(lastMod[:2])
+        # Otherwise, just split on spaces and take the first of the last names
+        else:
+            lastMod = lastMod[0]
+        
         lastMod = unidecode(lastMod)
         first = student["NameFirst"].split(",")[0]
         firstMod = first.replace("-", "")
