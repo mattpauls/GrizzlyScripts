@@ -133,6 +133,9 @@ def printvalues():
     return
 
 def randNumber():
+    """
+    Returns a two-digit random integer that does not include gang-related or other inappropriate numbers.
+    """
     exclude = [13, 14, 23, 69] #exclude certain gang-related numbers etc
     rand = random.randint(10, 99)
     return randNumber() if rand in exclude else rand
@@ -151,6 +154,11 @@ def genpassword():
 
 #Username Generator
 def usernamegen():
+    """
+    Creates a usernames.csv file in the output folder that contains columns needed for importing usernames and passwords into FileMaker.
+
+    Generates usernames that are appropriately formatted for emails and 20 characters or less, and assigns each username with a randomly-generated password.
+    """
     filename = "usernames.csv"
     header = "TABEID,last,first,SchoolEmail,SchoolUsername,SchoolEmailPassword,grp,plt\r\n"
     print("Creating file in output folder...")
@@ -252,7 +260,7 @@ def importAD():
     print("Generating file...")
 
     header = ["NameLast", "NameFirst", "SchoolUsername", "SchoolEmailPassword", "Group", "Platoon", "TABEID"]
-    with open('/Users/mpauls/Downloads/adimport.csv', 'w') as output_file:
+    with open(os.path.join(outputfolder, 'adimport.csv'), 'w') as output_file:
         dict_writer = csv.DictWriter(output_file, header, extrasaction='ignore')
         dict_writer.writeheader()
         dict_writer.writerows(filemakerGetActive())
@@ -313,7 +321,7 @@ def importLexia():
     header = ["First Name", "Last Name", "Username", "Password", "Grade", "Class", "School", "Student Number"]
     #fieldnames = ["NameFirst", "NameLast", "SchoolUsername", "SchoolEmailPassword", "GradeLevel", "Group", ]
     # First Name, Last Name, Username, Password, Grade, Class, School
-    with open('/Users/mpauls/Downloads/lexia.csv', 'w') as output_file:
+    with open(os.path.join(outputfolder, 'lexia.csv'), 'w') as output_file:
         dict_writer = csv.DictWriter(output_file, header, extrasaction='ignore')
         dict_writer.writeheader()
         dict_writer.writerows(lexia)
