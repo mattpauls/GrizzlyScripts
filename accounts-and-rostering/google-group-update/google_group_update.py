@@ -71,35 +71,7 @@ def updateGroups(activecadets):
 #   {user <email address> | group <group address> | ou|ou_and_children <org name> | file <file name> | all users}
 
     for cadet in activecadets:
-        if '1' in cadet['Platoon']:
-            addToGroup(cadet['SchoolEmail'], '1-platoon@mygya.com')
-        elif '2' in cadet['Platoon']:
-            addToGroup(cadet['SchoolEmail'], '2-platoon@mygya.com')
-        elif '3' in cadet['Platoon']:
-            addToGroup(cadet['SchoolEmail'], '3-platoon@mygya.com')
-        elif '4' in cadet['Platoon']:
-            addToGroup(cadet['SchoolEmail'], '4-platoon@mygya.com')
-
-    for cadet in activecadets:
-        if 'A' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'a-group@mygya.com')
-        elif 'B' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'b-group@mygya.com')
-        elif 'C' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'c-group@mygya.com')
-        elif 'D' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'd-group@mygya.com')
-        elif 'E' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'e-group@mygya.com')
-        elif 'F' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'f-group@mygya.com')
-        elif 'G' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'g-group@mygya.com')
-        elif 'H' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'h-group@mygya.com')
-        elif 'I' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'i-group@mygya.com')
-        elif 'J' in cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], 'j-group@mygya.com')
+        addToGroup(cadet['SchoolEmail'], str(cadet['Platoon'])[:1] + '-platoon@mygya.com')
+        addToGroup(cadet['SchoolEmail'], cadet['Group'][:1].lower() + '-group@mygya.com')
 
 updateGroups(filemakerGetActive())
