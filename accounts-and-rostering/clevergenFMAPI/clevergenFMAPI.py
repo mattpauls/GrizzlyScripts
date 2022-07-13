@@ -13,20 +13,32 @@ import fmrest
 from pathlib import Path
 import re
 from getpass import getpass
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Set variables
-classNo = "48" # Update this to the current class number
-contractClassList = "/Users/mpauls/Downloads/CleverSFTP_SEM2/Copy of GRADES for Class 48 Contract Classes S2 - contract_enrollment.csv"
-sectionsFile = "/Users/mpauls/Downloads/CleverSFTP_SEM2/sections.csv"
-outputfolder = "/Users/mpauls/Downloads"
+classNo = str(os.getenv("CLASS_NUMBER"))
+outputfolder = os.getenv("DOWNLOADS_FOLDER")
 print("Output folder is: " + outputfolder)
 
+contractClassList = "/Users/mpauls/Downloads/CleverSFTP_SEM2/Copy of GRADES for Class 48 Contract Classes S2 - contract_enrollment.csv"
+sectionsFile = "/Users/mpauls/Downloads/CleverSFTP_SEM2/sections.csv"
+
 def filemakerGetActive():
+    """
+    Returns a dictionary of cadets in FileMaker.
+    """
     # Could also use getpass.getuser() if we wanted.
     # Prompt for FileMaker api password
     fmpassword = getpass()
 
-    fms = fmrest.Server('https://fm.mygya.com', user='apiRead', password=fmpassword, database='edu class ' + classNo, layout='CADETAPI')
+    fms = fmrest.Server(os.getenv("FMS_URL"), 
+    user=os.getenv("FMS_USERNAME"), 
+    password=os.getenv("FMS_PASSWORD"), 
+    database=os.getenv("FMS_DATABASE"), 
+    layout=os.getenv("FMS_LAYOUT"))
+    
     fms.login()
 
     #record = fms.get_record(310)
