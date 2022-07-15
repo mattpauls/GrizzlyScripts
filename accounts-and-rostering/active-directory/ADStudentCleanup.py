@@ -116,8 +116,9 @@ def searchAD(ad):
             'TABEID': TABEID,
             'dn': r[0]
             }
-
-    # Get students currently in the ISP OU
+    # Uncomment to include students OU
+    '''
+    # Get students currently in the students OU
     result = ad.search_s("ou=students, dc=gya, dc=local", ldap.SCOPE_SUBTREE, "(&(objectClass=user))", ["employeeID", "samaccountname"])
 
     for r in result:
@@ -136,7 +137,7 @@ def searchAD(ad):
             }
     # print(result)
     # print(students)
-
+    '''
     # ad.unbind_s() # enable this for testing purposes, normally ad would be passed to this function and the unbinding would be handled outside of it.
 
     # TODO handle service accounts, remove them from this list.
@@ -152,13 +153,12 @@ def processStudents():
     students = filemakerGetAll()
     ad = bindAD()
 
-    # TODO write logic to check isp and students OUs for student accounts. Build out a list or dictionary with the usernames and TABEIDs found (if any)
-    existingAdStudents = searchAD(ad)
+    
     
 
     
     for student in students:
-
+        print("student is: ", student)
         # Check if student has a username assigned.
         if student['SchoolUsername']:
             # Check if student exists in Active Directory (search for account)
@@ -222,13 +222,41 @@ def processStudents():
         # break
     # print(existingAdStudents)
 
+    # TODO write logic to check isp and students OUs for student accounts. Build out a list or dictionary with the usernames and TABEIDs found (if any)
+    # Load students from the ISP OU, after we've done all the processing above.
+    existingAdStudents = searchAD(ad)
 
-    for student in existingAdStudents:
-        print(student)
-        if not existingAdStudents[student]['correct_location']:
-            print('looks like this student is in the incorrect OU, need to move them!', existingAdStudents[student])
-        else:
-            print('this student is in the correct location:', existingAdStudents[student])
+    # Loop through found students in the ISP OU
+    for ispstudent in existingAdStudents:
+        print(ispstudent)
+        found = False
+
+        # Loop through the students that we have in FileMaker.
+        for student in students:
+            # print(student["SchoolUsername"])
+            if student["SchoolUsername"] == ispstudent:
+                found = True
+        
+        # If the student in the ISP OU is not found in FileMaker, move them to the correct Alumni OU
+        if not found:
+            print("didn't find student in ISP OU! Need to move them to the correct alumni OU")
+            
+            alumniClass = ispstudent[-2:] # get the class number from the student's username
+            
+            if alumniClass.isdigit(): # Check if what we got was a number, if so continue, otherwise skip
+                samaccountname = "samaccountname=" + ispstudent
+                # Get account object in AD
+                result = ad.search_s("dc=GYA, dc=local", ldap.SCOPE_SUBTREE, samaccountname)
+                print("student was found in AD")
+                userCurrentDn = result[0][0]
+                print(result[0][1]['cn'][0].decode('UTF-8'))
+                userRdn = "cn=" + result[0][1]['cn'][0].decode('UTF-8')
+
+                alumniOU = "OU=class" + alumniClass + ",OU=alumni,DC=gya,DC=local"
+
+                print("Moving student %s to %s " % (ispstudent, alumniOU))
+                print(userCurrentDn, userRdn, alumniOU)
+                ad.rename_s(userCurrentDn, userRdn, alumniOU)
 
     # Close connection
     ad.unbind_s()
