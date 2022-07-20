@@ -1,59 +1,74 @@
-# from tkFileDialog import askdirectory
-# import Tkinter, tkFileDialog
 import os
-import csv
+import fmrest
+from dotenv import load_dotenv
 
-# Define CSV Reader
-def stucsvreader(filepath):
-    stucsv = open(filepath, 'r')
-    csv_stucsv = csv.reader(stucsv)
-    #next(csv_stucsv) #skips header row
-    return csv_stucsv
-# End CSV Reader definition
+load_dotenv()
 
-#ask for profile picture name export
-#inputcsv = tkFileDialog.askopenfilename(title="Choose the profile picture name export from Filemaker.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the profile picture name export from Filemaker.")
-inputcsv = "/Users/mattpauls/Downloads/pictures.csv"
-picturePath = "/Users/mattpauls/Desktop/C47 - Intake Photos RAW"
-print("Filemaker export is: " + inputcsv)
+def filemakerGetActive():
+    """
+    Returns a dictionary of cadets in FileMaker.
+    """
+
+    fms = fmrest.Server(os.getenv("FMS_URL"), 
+    user=os.getenv("FMS_USERNAME"), 
+    password=os.getenv("FMS_PASSWORD"), 
+    database=os.getenv("FMS_DATABASE"), 
+    layout=os.getenv("FMS_LAYOUT"))
+
+    fms.login()
+
+    find_query = [{'StatusActive': 'Yes'}]
+    foundset = fms.find(find_query, limit=500)
+
+    global activecadets # oooh why did I use global!?
+    activecadets = []
+
+    for record in foundset:
+        cadet = {
+        "NameLast": "",
+        "NameFirst": "",
+        "TABEID": "",
+        "Group": "",
+        "Platoon": ""
+        }
+        
+        cadet["NameLast"] = record.NameLast
+        cadet["NameFirst"] = record.NameFirst
+        cadet["TABEID"] = record.TABEID
+        cadet["Group"] = record.Group
+        cadet["Platoon"] = record.Platoon
+        cadet["SchoolUsername"] = record.SchoolUsername
+        cadet["SchoolEmail"] = record.SchoolEmail
+        cadet["SchoolEmailPassword"] = record.SchoolEmailPassword
+        cadet["GradeLevel"] = record.GradeLevel
+        cadet["ELClassification"] = record.ELClassification
+        cadet["PhotoPath_calc"] = record.PhotoPath_calc
+
+        activecadets.append(cadet)
+
+    fms.logout()
+
+    print("%s students found." % len(activecadets)) # number in found set
+
+    return activecadets
+
+#TODO figure out a better way of handling the input of this path.
+picturePath = "/Users/mpauls/Desktop/C49 - Intake Portraits"
 
 
-def printvalues(): # for testing purposes
-    print("What is in that CSV file:")
-    for studentid, email, plt, grp, picName in stucsvreader(inputcsv):
-        print(studentid, email, plt, grp, picName)
-    return
-
-# Generate 1st, etc based off of the plt the student is a member of.
-def pltFolder(plt):
-    if plt is "1":
-        pltName = "1st"
-    elif plt is "2":
-        pltName = "2nd"
-    elif plt is "3":
-        pltName = "3rd"
-    elif plt is "4":
-        pltName = "4th"
-    else:
-        pltName = "ERROR"
-    return pltName
-
-# Assumes pictures are located in a folder like: /users/matt/desktop/class36intake/1st/cropped/...
-# export from filemaker needs to be in order of ssn, email, plt, grp, picName
-# for some reason my export didn't have headers. See the CSV reader above if that needs to change.
+# Assumes pictures are located in a folder like: /users/matt/desktop/class36intake/1/cropped/...
 def renamePictures():
-    # print "What is in that CSV file:"
-    for studentid, email, plt, grp, picName in stucsvreader(inputcsv):
-        # print ssn, email, plt, grp, picName
 
-        # origPicturePath = "/Users/mattpauls/Desktop/C47 - Intake Photos RAW" + os.path.sep + plt + os.path.sep + "cropped" + os.path.sep + picName  # pltFolder(plt)
-        origPicturePath = os.path.join(picturePath, plt, "cropped", picName)
+    students = filemakerGetActive()
 
-        if picName and os.path.isfile(origPicturePath) :
+    for student in students:
 
-            # origPicturePath = "/Users/mattpauls/Desktop/C40 - Formal Pictures" + os.path.sep + plt + os.path.sep + picName  # pltFolder(plt)
-            # newPicturePath = "/Users/mattpauls/Desktop/C47 - Intake Photos RAW/email" + os.path.sep + plt + os.path.sep + email + ".jpg"
-            newPicturePath = os.path.join(picturePath, "email", plt, email, ".jpg")
+        origPicturePath = os.path.join(picturePath, student["Platoon"], "cropped", student["PhotoPath_calc"])
+
+        if student["PhotoPath_calc"] and os.path.isfile(origPicturePath):
+
+            #TODO check if directory "email" exists and create it if it does not.
+            newPicturePath = os.path.join(picturePath, "email", student["Platoon"], student["SchoolEmail"] + ".jpg")
 
             print("Renaming: " + origPicturePath)
             print("to: " + newPicturePath)
