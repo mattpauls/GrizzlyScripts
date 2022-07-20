@@ -72,6 +72,7 @@ def updateGroups(activecadets):
 
     for cadet in activecadets:
         addToGroup(cadet['SchoolEmail'], str(cadet['Platoon'])[:1] + '-platoon@mygya.com')
-        addToGroup(cadet['SchoolEmail'], cadet['Group'][:1].lower() + '-group@mygya.com')
+        if cadet['Group']:
+            addToGroup(cadet['SchoolEmail'], cadet['Group'][:1].lower() + '-group@mygya.com')
 
 updateGroups(filemakerGetActive())
