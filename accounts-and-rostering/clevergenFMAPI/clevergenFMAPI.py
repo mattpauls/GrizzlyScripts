@@ -22,8 +22,9 @@ classNo = str(os.getenv("CLASS_NUMBER"))
 outputfolder = os.getenv("DOWNLOADS_FOLDER")
 print("Output folder is: " + outputfolder)
 
-contractClassList = "/Users/mpauls/Downloads/CleverSFTP_SEM2/Copy of GRADES for Class 48 Contract Classes S2 - contract_enrollment.csv"
-sectionsFile = "/Users/mpauls/Downloads/CleverSFTP_SEM2/sections.csv"
+contractClassList = ""
+sectionsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM1/sections.csv"
+enrollmentsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM1/enrollments.csv"
 
 def filemakerGetActive():
     """
@@ -169,7 +170,7 @@ def enrollmentsgen():
 
     
 
-    with open('/Users/mpauls/Downloads/CleverSFTP_SEM2/enrollments.csv', 'w') as csvfile:
+    with open(enrollmentsFile, 'w') as csvfile:
         fieldnames = ["School_id","Section_id","Student_id"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
@@ -179,14 +180,22 @@ def enrollmentsgen():
 
         for student in students:
             print("Working on student: " + student["NameLast"])
+            # Initialize a student dictionary object for temporary use
             stuDict = {"TABEID": student["TABEID"], "NameLast": student["NameLast"], "Group": student["Group"], "Sections": {}}
-            contractClassReader = csv.DictReader(open(contractClassList))
+            # Open up the Contract Class CSV
+            try:
+                contractClassReader = csv.DictReader(open(contractClassList))
 
-            for contractClass in contractClassReader:
-                if (int(student["TABEID"]) == int(contractClass["TABEID"])): # If the student shows up in the contract class list, just add them.
-                    stuDict["Sections"][contractClass["Period"]] = contractClass["Section_id"]
-            
+                # Contract classes during periods 1-6 take precedence over "regular" classes, so write those into the student dictionary first
+                for contractClass in contractClassReader:
+                    if (int(student["TABEID"]) == int(contractClass["TABEID"])): # If the student shows up in the contract class list, just add them.
+                        stuDict["Sections"][contractClass["Period"]] = contractClass["Section_id"]
+            except:
+                print("Issue with the contract class reader or data")
+
+            # Loop over the sections that we loaded from the sections.csv file
             for section in sections:
+                # Grab the first two characters from the section name (formatted like D5English)
                 sectionFirstTwo = re.search("[A-J][1-9]", section["Section_id"])
 
                 if (sectionFirstTwo) and (student["Group"] == section["Section_id"][:1]): # If Section_id is formatted as A1, B3, etc (not Contract1) AND If student group matches this section's group
@@ -194,11 +203,14 @@ def enrollmentsgen():
                         # This adds the remainder of the classes the student is enrolled in with their school group to the sections they're enrolled in
                         # with the exception of the periods they're already enrolled in a contract class
                         stuDict["Sections"][section["Period"]] = section["Section_id"]
+            # Append the temporary student dictionary to the enrollments list
             enrollments.append(stuDict)
         # print(enrollments)
 
+        # Once all the students have been added to the enrollments list, loop over it
         for enrollment in enrollments:
             print(enrollment)
+            # For each element in the "Sections" key for each student in the list, write a row to the students.csv file with the school id, student section id, and student id
             for stuSection in enrollment["Sections"]:
                 print("Adding Cadet %s in Group %s to Section %s" % (enrollment["NameLast"],enrollment["Group"],enrollment["Sections"][stuSection]))
                 writer.writerow({"School_id": 6, "Section_id": enrollment["Sections"][stuSection], "Student_id": enrollment["TABEID"]})
@@ -213,5 +225,5 @@ def enrollmentsgen():
                     writer.writerow({"School_id": 6, "Section_id": section["Section_id"], "Student_id": student["TABEID"]})
 '''
 
-# enrollmentsgen()
-studentsgen() #uncomment to generate student csv file
+enrollmentsgen()
+#studentsgen() #uncomment to generate student csv file
