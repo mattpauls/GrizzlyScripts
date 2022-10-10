@@ -7,7 +7,7 @@ import sys
 # sys.path.append('/usr/local/lib/python3.9/site-packages') # was python3.7
 import os
 import csv
-from unidecode import unidecode
+# from unidecode import unidecode
 #from mailmerge import MailMerge
 import fmrest
 from pathlib import Path
@@ -23,8 +23,8 @@ outputfolder = os.getenv("DOWNLOADS_FOLDER")
 print("Output folder is: " + outputfolder)
 
 contractClassList = ""
-sectionsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM1/sections.csv"
-enrollmentsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM1/enrollments.csv"
+sectionsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM2/sections.csv"
+enrollmentsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM2/enrollments.csv"
 
 def filemakerGetActive():
     """
@@ -196,9 +196,9 @@ def enrollmentsgen():
             # Loop over the sections that we loaded from the sections.csv file
             for section in sections:
                 # Grab the first two characters from the section name (formatted like D5English)
-                sectionFirstTwo = re.search("[A-J][1-9]", section["Section_id"])
+                sectionAndPeriod = re.search("(?<=C\d\dS\d)[A-J][1-9]", section["Section_id"])
 
-                if (sectionFirstTwo) and (student["Group"] == section["Section_id"][:1]): # If Section_id is formatted as A1, B3, etc (not Contract1) AND If student group matches this section's group
+                if (sectionAndPeriod) and (student["Group"] == section["Section_id"][5:6]): # If Section_id is formatted as A1, B3, etc (not Contract1) AND If student group matches this section's group
                     if section["Period"] not in stuDict["Sections"]:
                         # This adds the remainder of the classes the student is enrolled in with their school group to the sections they're enrolled in
                         # with the exception of the periods they're already enrolled in a contract class
