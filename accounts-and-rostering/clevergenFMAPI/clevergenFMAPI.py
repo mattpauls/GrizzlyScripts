@@ -14,6 +14,10 @@ from pathlib import Path
 import re
 from getpass import getpass
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.prompt import Prompt
+
+c = Console()
 
 load_dotenv()
 
@@ -22,7 +26,7 @@ classNo = str(os.getenv("CLASS_NUMBER"))
 outputfolder = os.getenv("DOWNLOADS_FOLDER")
 print("Output folder is: " + outputfolder)
 
-contractClassList = ""
+contractClassList = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM2/C49 - Contract Classes SEM2 - Sheet1.csv"
 sectionsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM2/sections.csv"
 enrollmentsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM2/enrollments.csv"
 
@@ -35,10 +39,11 @@ def filemakerGetActive():
     fmpassword = getpass()
 
     fms = fmrest.Server(os.getenv("FMS_URL"), 
-    user=os.getenv("FMS_USERNAME"), 
-    password=os.getenv("FMS_PASSWORD"), 
-    database=os.getenv("FMS_DATABASE"), 
-    layout=os.getenv("FMS_LAYOUT"))
+        user=os.getenv("FMS_USERNAME"), 
+        password=os.getenv("FMS_PASSWORD"), 
+        database=os.getenv("FMS_DATABASE"), 
+        layout=os.getenv("FMS_LAYOUT"),
+        api_version="vLatest")
     
     fms.login()
 
@@ -76,15 +81,10 @@ def filemakerGetActive():
         cadet["SpecialEducationIEP"] = record.SpecialEducationIEP
 
         activecadets.append(cadet)
-        #print(record.NameLast + ", " + record.NameFirst)
-        #print(record.TABEID)
-        #print(record.Group)
-        #print(record.Platoon)
-        # print(record.keys())
 
     fms.logout()
 
-    print("Number of students found: %s" % len(activecadets)) # number in found set
+    c.print(f"Number of students found: {len(activecadets)}") # number in found set
 
     return activecadets
 
@@ -225,5 +225,21 @@ def enrollmentsgen():
                     writer.writerow({"School_id": 6, "Section_id": section["Section_id"], "Student_id": student["TABEID"]})
 '''
 
-enrollmentsgen()
-#studentsgen() #uncomment to generate student csv file
+def main():
+    while(True):
+        c.rule(title="Clever File Generation")
+        c.print("1: Generate student file")
+        c.print("2: Generate enrollments file")
+        c.print("3: Exit")
+
+        option = Prompt.ask("Enter your choice:", choices=["1", "2", "3"])
+
+        if option == "1":
+            studentsgen()
+        elif option == "2":
+            enrollmentsgen()
+        elif option == "3":
+            exit()
+
+if __name__ == "__main__":
+    main()
