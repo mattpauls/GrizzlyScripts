@@ -1,18 +1,9 @@
 __author__ = 'mattpauls'
 
-#from tkFileDialog import askdirectory
-#import Tkinter, tkFileDialog
-from gzip import _GzipReader
-import sys
-# sys.path.append('/usr/local/lib/python3.9/site-packages') # was python3.7
 import os
 import csv
-# from unidecode import unidecode
-#from mailmerge import MailMerge
 import fmrest
-from pathlib import Path
 import re
-from getpass import getpass
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
@@ -24,19 +15,17 @@ load_dotenv()
 # Set variables
 classNo = str(os.getenv("CLASS_NUMBER"))
 outputfolder = os.getenv("DOWNLOADS_FOLDER")
-print("Output folder is: " + outputfolder)
+print("Output folder is:", outputfolder)
 
-contractClassList = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM2/C49 - Contract Classes SEM2 - Sheet1.csv"
-sectionsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM2/sections.csv"
-enrollmentsFile = "/Volumes/GoogleDrive/My Drive/Class 49/C49 - Data Import/C49 - Clever/SEM2/enrollments.csv"
+contractClassList = os.getenv("CONTRACT_CLASS_SOURCE")
+sectionsFile = os.getenv("SECTIONS_SOURCE")
+enrollmentsFile = os.getenv("ENROLLMENTS_SOURCE")
 
-def filemakerGetActive():
+
+def filemakerGetActive() -> dict:
     """
     Returns a dictionary of cadets in FileMaker.
     """
-    # Could also use getpass.getuser() if we wanted.
-    # Prompt for FileMaker api password
-    fmpassword = getpass()
 
     fms = fmrest.Server(os.getenv("FMS_URL"), 
         user=os.getenv("FMS_USERNAME"), 
@@ -44,17 +33,12 @@ def filemakerGetActive():
         database=os.getenv("FMS_DATABASE"), 
         layout=os.getenv("FMS_LAYOUT"),
         api_version="vLatest")
-    
+
     fms.login()
 
-    #record = fms.get_record(310)
-    #print(record.NameLast)
-
     find_query = [{'StatusActive': 'Yes'}]
-    foundset = fms.find(find_query, limit=500)
-    #print(foundset)
+    foundset = fms.find(find_query, limit=os.getenv("FMS_LIMIT"))
 
-    global activecadets 
     activecadets = []
 
     for record in foundset:
@@ -65,7 +49,7 @@ def filemakerGetActive():
         "Group": "",
         "Platoon": ""
         }
-        
+
         cadet["NameLast"] = record.NameLast
         cadet["NameFirst"] = record.NameFirst
         cadet["TABEID"] = record.TABEID
@@ -88,12 +72,14 @@ def filemakerGetActive():
 
     return activecadets
 
+
 # Define CSV Reader for Filemaker raw export. Filemaker does not export headers with the CSV, so don't skip the first line.
 def filemakerexportstucsvreader(filepath):
     stucsv = open(filepath, 'rU')
     csv_stucsv = csv.reader(stucsv)
     return csv_stucsv
 # End CSV Reader definition
+
 
 # Define CSV Reader
 def stucsvreader(filepath):
@@ -103,11 +89,13 @@ def stucsvreader(filepath):
     return csv_stucsv
 # End CSV Reader definition
 
+
 def stucsvcreator(csvfilename, headers):
     csvfile = outputfolder + os.path.sep + csvfilename
     stucsv_out = open(csvfile, "w")
     stucsv_out.write(headers)
     stucsv_out.close()
+
 
 def stucsvwriter(csvfilename, row):
     csvfile = outputfolder + os.path.sep + csvfilename
@@ -115,10 +103,12 @@ def stucsvwriter(csvfilename, row):
     stucsv_out.write(row)
     stucsv_out.close()
 
+
 def stucsvwriter2(csvfilename, row):
     csvfile = outputfolder + os.path.sep + csvfilename
     w = csv.writer(open(csvfile,"a"))
     w.writerow(row)
+
 
 def printvalues():
     print("What is in Filemaker?")
@@ -127,20 +117,21 @@ def printvalues():
         print(cadet["NameLast"])
     return
 
-#/Users/mattpauls/Desktop/CSVGen/CSVGen/output/
 
 #Username Generator
 def studentsgen():
+    """
+    Generates students.csv.
+    """
     filename = "students.csv"
     header = "School_id,Student_id,Student_number,Last_name,First_name,Grade,Gender,DOB,IEP_status,Student_email\r\n"
-    # header = "TABEID,last,first,SchoolEmail,SchoolUsername,SchoolEmailPassword,grp,plt\r\n"
     print("Creating file in output folder...")
     stucsvcreator(filename, header)
 
     print("Generating students.csv...")
     for student in filemakerGetActive():
         print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
-        
+
         #Set row to NULL, just in case something goes wrong:
         row = None
 
@@ -161,14 +152,14 @@ def studentsgen():
         row = School_id + "," + Student_id + "," + Student_number + "," + Last_name + "," + First_name + "," + Grade + "," + Gender + "," + DOB + "," + IEP_status + "," + Student_email + "\r\n"
         stucsvwriter(filename, row)
 
+
 def enrollmentsgen():
-    # Enrollments.csv
-    # School_id,Section_id,Student_id
+    """
+    Generates enrollments.csv.
+    """
     reader = csv.DictReader(open(sectionsFile))
     sections = list(reader) # Convert read CSV to a list of dictionaries to use later.
     enrollments = []
-
-    
 
     with open(enrollmentsFile, 'w') as csvfile:
         fieldnames = ["School_id","Section_id","Student_id"]
@@ -183,6 +174,7 @@ def enrollmentsgen():
             # Initialize a student dictionary object for temporary use
             stuDict = {"TABEID": student["TABEID"], "NameLast": student["NameLast"], "Group": student["Group"], "Sections": {}}
             # Open up the Contract Class CSV
+            # TODO skip contract class if not configured in .env
             try:
                 contractClassReader = csv.DictReader(open(contractClassList))
 
@@ -214,19 +206,11 @@ def enrollmentsgen():
             for stuSection in enrollment["Sections"]:
                 print("Adding Cadet %s in Group %s to Section %s" % (enrollment["NameLast"],enrollment["Group"],enrollment["Sections"][stuSection]))
                 writer.writerow({"School_id": 6, "Section_id": enrollment["Sections"][stuSection], "Student_id": enrollment["TABEID"]})
-               
 
-''' ORIGINAL
-        for section in sections:
-            for student in students:
-                if student["Group"] == section["Section_id"][:1]: # If student group matches this section's group then add enrollment
-                    # but first check if the student is in a contract class for that period
-                    print("Adding Cadet %s in Group %s to Section %s" % (student["NameLast"],student["Group"],section["Section_id"]))
-                    writer.writerow({"School_id": 6, "Section_id": section["Section_id"], "Student_id": student["TABEID"]})
-'''
 
 def main():
     while(True):
+        c.print("\n")
         c.rule(title="Clever File Generation")
         c.print("1: Generate student file")
         c.print("2: Generate enrollments file")
