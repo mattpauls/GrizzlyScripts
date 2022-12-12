@@ -19,20 +19,12 @@ def filemakerGetAll():
     database=os.getenv("FMS_DATABASE"), 
     layout=os.getenv("FMS_LAYOUT"),
     api_version='vLatest')
-    
+
     fms.login()
 
-    #record = fms.get_record(310)
-    #print(record.NameLast)
-
-    # For testing, only finding one student
-    # find_query = [{'SchoolUsername': 'gonzalezemiliano48'}]
-    # foundset = fms.find(find_query, limit=500)
-    
     # Get all records
-    foundset = fms.get_records(limit=500) # Uncomment to grab all records in FileMaker
+    foundset = fms.get_records(limit=500)
 
-    # global activecadets 
     activecadets = []
 
     for record in foundset:
@@ -43,7 +35,7 @@ def filemakerGetAll():
         "Group": "",
         "Platoon": ""
         }
-        
+
         cadet["StatusActive"] =  record.StatusActive
         cadet["NameLast"] = record.NameLast
         cadet["NameFirst"] = record.NameFirst
@@ -63,18 +55,17 @@ def filemakerGetAll():
 
     fms.logout()
 
-    print("Number of students found: %s" % len(activecadets)) # number in found set
+    print(f"{ len(activecadets) } students found: %s")
 
     return activecadets
 
 
 
 def bindAD():
-    Server = "ldap://dc1.gya.local"
-    # Base = 
+    ad_server = os.getenv("AD_DC") 
     Scope = ldap.SCOPE_SUBTREE
 
-    l = ldap.initialize("ldap://dc1.gya.local")
+    l = ldap.initialize(ad_server)
     l.simple_bind_s(os.getenv("AD_USERNAME"), os.getenv("AD_PASSWORD"))
     l.set_option(ldap.OPT_REFERRALS, 0)
     # result = l.search_s("dc=GYA, dc=local", ldap.SCOPE_SUBTREE, 'userPrincipalName=mpauls@mygya.com', ['memberOf'])
