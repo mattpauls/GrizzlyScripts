@@ -110,10 +110,12 @@ def searchAD(ad) -> dict:
     ]
 
     for ou in ous_to_search:
-        result = ad.search_s(f"ou={ ou }, dc=gya, dc=local", ldap.SCOPE_SUBTREE, "(&(objectClass=user))", ["employeeID", "samaccountname"])
+        result = ad.search_s(f"ou={ ou }, dc=gya, dc=local", ldap.SCOPE_SUBTREE, "(&(objectClass=user))", ["employeeID", "samaccountname", "cn"])
 
         for r in result:
             samaccountname = r[1]['sAMAccountName'][0].decode('UTF-8')
+            userRdn = "cn=" + r[1]['cn'][0].decode('UTF-8')
+
             try:
                 TABEID = r[1]['employeeID'][0].decode('UTF-8')
             except:
@@ -123,7 +125,8 @@ def searchAD(ad) -> dict:
                     'location': ou,
                     'correct_location': None,
                     'TABEID': TABEID,
-                    'dn': r[0]
+                    'dn': r[0],
+                    'userRdn': userRdn
                     }
 
     # ad.unbind_s() # uncomment for testing purposes, normally ad would be passed to this function and the unbinding would be handled outside of it.
@@ -308,20 +311,18 @@ def processStudents2():
             # The only exception is if a student is going to be attending ISP next cycle. In that case, move them to the ISP OU
             if school_year_end == 1 and stu_status in {"isp", "yes", "Yes", "no", "No"}:
                 if stu_status in {"yes", "Yes"} and student["ISPNextCycle"] in {"yes", "Yes"}:
-                    # print(student["SchoolUsername"])
                     print(f"{student['SchoolUsername']} is in ISP next cycle and needs to be moved to the ISP OU.")
                 else:
                     print(f"{student['SchoolUsername']} needs to move to alumi OU.")
-                #move to alumni
 
             # If it's still school, process students as needed.
             if school_year_end == 0:
                 if stu_status in {"yes", "Yes"}:
-                    # print(student["SchoolUsername"])
                     print(f"{student['SchoolUsername']} is an active student and should be in the students OU.")
                 elif stu_status in {"isp"}:
                     print(f"{student['SchoolUsername']} is an active ISP student and should be in the isp OU.")
 
     ad.unbind_s()
 
-processStudents2()
+# processStudents2()
+searchAD()
