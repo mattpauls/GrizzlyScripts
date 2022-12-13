@@ -2,6 +2,9 @@ import os
 import fmrest
 import ldap
 from dotenv import load_dotenv
+from rich.console import Console
+
+c = Console()
 
 load_dotenv()
 
@@ -62,10 +65,12 @@ def filemakerGetAll():
 
 
 def bindAD():
-    ad_server = os.getenv("AD_DC") 
+    """"
+    Binds to Active Directory and returns LDAP Object.
+    """
     Scope = ldap.SCOPE_SUBTREE
 
-    l = ldap.initialize(ad_server)
+    l = ldap.initialize(os.getenv("AD_SERVER"))
     l.simple_bind_s(os.getenv("AD_USERNAME"), os.getenv("AD_PASSWORD"))
     l.set_option(ldap.OPT_REFERRALS, 0)
     # result = l.search_s("dc=GYA, dc=local", ldap.SCOPE_SUBTREE, 'userPrincipalName=mpauls@mygya.com', ['memberOf'])
@@ -91,52 +96,35 @@ def searchAD(ad):
     # ad = bindAD() # enable this for testing purposes, normally would be passed this as an argument
 
     students = {}
+    ous_to_search = ["isp", "students"]
 
-    # Get students currently in the ISP OU
-    result = ad.search_s("ou=isp, dc=gya, dc=local", ldap.SCOPE_SUBTREE, "(&(objectClass=user))", ["employeeID", "samaccountname"])
-
-    for r in result:
-        samaccountname = r[1]['sAMAccountName'][0].decode('UTF-8')
-        try:
-            TABEID = r[1]['employeeID'][0].decode('UTF-8')
-        except:
-            TABEID = None
-        students[samaccountname] = {
-            'location': 'isp',
-            'correct_location': None,
-            'TABEID': TABEID,
-            'dn': r[0]
-            }
-    # Uncomment to include students OU
-    '''
-    # Get students currently in the students OU
-    result = ad.search_s("ou=students, dc=gya, dc=local", ldap.SCOPE_SUBTREE, "(&(objectClass=user))", ["employeeID", "samaccountname"])
-
-    for r in result:
-        # print(r)
-        # print(r[1]['sAMAccountName'])
-        samaccountname = r[1]['sAMAccountName'][0].decode('UTF-8')
-        try:
-            TABEID = r[1]['employeeID'][0].decode('UTF-8')
-        except:
-            TABEID = None
-        students[samaccountname] = {
-            'location': 'students',
-            'correct_location': None,
-            'TABEID': TABEID,
-            'dn': r[0]
-            }
-    # print(result)
-    # print(students)
-    '''
-    # ad.unbind_s() # enable this for testing purposes, normally ad would be passed to this function and the unbinding would be handled outside of it.
-
-    # TODO handle service accounts, remove them from this list.
+    # Handle service accounts, remove them from this list.
     serviceAccounts = [
         "testkid",
         "studentwifi",
         "studentwifi2",
+        "ispstudent"
     ]
+
+    for ou in ous_to_search:
+        result = ad.search_s(f"ou={ ou }, dc=gya, dc=local", ldap.SCOPE_SUBTREE, "(&(objectClass=user))", ["employeeID", "samaccountname"])
+
+        for r in result:
+            samaccountname = r[1]['sAMAccountName'][0].decode('UTF-8')
+            try:
+                TABEID = r[1]['employeeID'][0].decode('UTF-8')
+            except:
+                TABEID = None
+            if samaccountname not in serviceAccounts:
+                students[samaccountname] = {
+                    'location': ou,
+                    'correct_location': None,
+                    'TABEID': TABEID,
+                    'dn': r[0]
+                    }
+
+    # ad.unbind_s() # uncomment for testing purposes, normally ad would be passed to this function and the unbinding would be handled outside of it.
+    # c.print(students) # uncomment for testing
 
     return students
 
@@ -144,10 +132,6 @@ def processStudents():
     students = filemakerGetAll()
     ad = bindAD()
 
-    
-    
-
-    
     for student in students:
         print("student is: ", student)
         # Check if student has a username assigned.
@@ -252,4 +236,6 @@ def processStudents():
     # Close connection
     ad.unbind_s()
 
-processStudents()
+# processStudents()
+
+searchAD()
