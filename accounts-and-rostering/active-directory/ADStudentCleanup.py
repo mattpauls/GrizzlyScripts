@@ -245,4 +245,61 @@ def processStudents():
     # Close connection
     ad.unbind_s()
 
-processStudents()
+
+def find_student_in_ad(ad, student, ad_students):
+    print(student)
+
+    # Check if student exists in Active Directory (search for account)
+    samaccountname = "samaccountname=" + student['SchoolUsername']
+    r = ad.search_s("dc=GYA, dc=local", ldap.SCOPE_SUBTREE, samaccountname)
+    c.print(samaccountname)
+    c.print(r)
+
+    samaccountname = r[0][1]['sAMAccountName'][0].decode('UTF-8')
+    try:
+        TABEID = r[0][1]['employeeID'][0].decode('UTF-8')
+    except:
+        TABEID = None
+
+    ad_students[samaccountname] = {
+        'location': None,
+        'correct_location': None,
+        'TABEID': TABEID,
+        'dn': r[0][0]
+        }
+
+    return ad_students
+
+
+def processStudents2():
+    students = filemakerGetAll()
+    ad = bindAD()
+
+    ad_students = searchAD(ad)
+
+    # print(ad_students)
+
+    for student in students:
+        # print("student is: ", student)
+
+        # add student to ad_students if not already there
+        if student["SchoolUsername"] and student["SchoolUsername"] not in ad_students:
+            ad_students = find_student_in_ad(ad, student, ad_students)
+
+        # Check if the student is found in ad_students after processing all students
+        if student["SchoolUsername"] in ad_students:
+            c.print(student)
+            c.print(ad_students[student["SchoolUsername"]])
+
+            student_status = student["StatusActive"]
+
+            if student_status == "ind st drop" or student_status == "no":
+                # TODO Allow to change password
+                # Check if currently in alumni OU
+                if "alumni" not in ad_students[student["SchoolUsername"]]["dn"]:
+                    # move to alumni OU
+                    pass
+
+    ad.unbind_s()
+
+processStudents2()
