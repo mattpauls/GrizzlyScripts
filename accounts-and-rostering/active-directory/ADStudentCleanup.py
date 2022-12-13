@@ -58,7 +58,7 @@ def filemakerGetAll():
 
     fms.logout()
 
-    print(f"{ len(activecadets) } students found: %s")
+    print(f"{ len(activecadets) } students found.")
 
     return activecadets
 
@@ -87,10 +87,12 @@ def moveUser(ad, username, userCurrentDn, userNewDn):
     ad.rename_s()
     ad.rename_s('cn=testreset,ou=test,dc=GYA,dc=local', 'cn=testreset', 'ou=Grizzly,dc=GYA,dc=local')
 
-def searchAD(ad):
+def searchAD(ad) -> dict:
     """"
-    Searches AD isp OU for students and returns a dictionary with student usernames as keys
+    Searches AD isp OU for students and returns a dictionary with student samaccountnames as keys
 
+    Example
+    ---------
     {'username48': {'location': 'isp', 'correct_location': '', 'TABEID': '12345', 'dn': 'CN=Student Name,OU=isp,DC=gya,DC=local'}}
     """
     # ad = bindAD() # enable this for testing purposes, normally would be passed this as an argument
@@ -132,14 +134,19 @@ def processStudents():
     students = filemakerGetAll()
     ad = bindAD()
 
+    ad_students = searchAD(ad)
+
     for student in students:
         print("student is: ", student)
+
         # Check if student has a username assigned.
         if student['SchoolUsername']:
+
             # Check if student exists in Active Directory (search for account)
             samaccountname = "samaccountname=" + student['SchoolUsername']
             result = ad.search_s("dc=GYA, dc=local", ldap.SCOPE_SUBTREE, samaccountname)
             print(result)
+
             if result is None:
                 print("student not found in AD")
             # elif len(result) > 1:
@@ -166,7 +173,7 @@ def processStudents():
                         
                         # Move the student to the ISP OU in Active Directory
                         print("moving student with info: ", userCurrentDn, userRdn, "OU=ISP,DC=GYA,Dc=local")
-                        ad.rename_s(userCurrentDn, userRdn, "OU=ISP,DC=GYA,Dc=local") # uncomment to move students
+                        # ad.rename_s(userCurrentDn, userRdn, "OU=ISP,DC=GYA,Dc=local") # uncomment to move students
                 
                 # Check if the student is an independent study drop
                 elif student["StatusActive"] == "ind st drop":
@@ -194,13 +201,14 @@ def processStudents():
 
 
         print(student)
-        # break
+        break
     # print(existingAdStudents)
 
     # TODO write logic to check isp and students OUs for student accounts. Build out a list or dictionary with the usernames and TABEIDs found (if any)
     # Load students from the ISP OU, after we've done all the processing above.
     existingAdStudents = searchAD(ad)
 
+    """
     # Loop through found students in the ISP OU
     for ispstudent in existingAdStudents:
         print(ispstudent)
@@ -232,10 +240,9 @@ def processStudents():
                 print("Moving student %s to %s " % (ispstudent, alumniOU))
                 print(userCurrentDn, userRdn, alumniOU)
                 ad.rename_s(userCurrentDn, userRdn, alumniOU)
+    """
 
     # Close connection
     ad.unbind_s()
 
-# processStudents()
-
-searchAD()
+processStudents()
