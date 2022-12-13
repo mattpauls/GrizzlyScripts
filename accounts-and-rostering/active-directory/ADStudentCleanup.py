@@ -53,6 +53,7 @@ def filemakerGetAll():
         cadet["Gender"] = record.Gender
         cadet["Birthday"] = record.Birthday
         cadet["SpecialEducationIEP"] = record.SpecialEducationIEP
+        cadet["ISPNextCycle"] = record.ISPNextCycle
 
         activecadets.append(cadet)
 
@@ -247,13 +248,13 @@ def processStudents():
 
 
 def find_student_in_ad(ad, student, ad_students):
-    print(student)
+    # print(student)
 
     # Check if student exists in Active Directory (search for account)
     samaccountname = "samaccountname=" + student['SchoolUsername']
     r = ad.search_s("dc=GYA, dc=local", ldap.SCOPE_SUBTREE, samaccountname)
-    c.print(samaccountname)
-    c.print(r)
+    # c.print(samaccountname)
+    # c.print(r)
 
     samaccountname = r[0][1]['sAMAccountName'][0].decode('UTF-8')
     try:
@@ -277,6 +278,8 @@ def processStudents2():
 
     ad_students = searchAD(ad)
 
+    school_year_end = 0
+
     # print(ad_students)
 
     for student in students:
@@ -288,17 +291,36 @@ def processStudents2():
 
         # Check if the student is found in ad_students after processing all students
         if student["SchoolUsername"] in ad_students:
-            c.print(student)
-            c.print(ad_students[student["SchoolUsername"]])
+            # c.print(student)
+            # c.print(ad_students[student["SchoolUsername"]])
 
-            student_status = student["StatusActive"]
+            stu_status = student["StatusActive"]
 
-            if student_status == "ind st drop" or student_status == "no":
+            if stu_status == "ind st drop" or stu_status in {"no", "No"}:
                 # TODO Allow to change password
                 # Check if currently in alumni OU
                 if "alumni" not in ad_students[student["SchoolUsername"]]["dn"]:
                     # move to alumni OU
-                    pass
+                    print(f"{student['SchoolUsername']} is dropped and needs to move to alumni.")
+                # TODO Check if student_status == "no" and if not disabled in AD, disable in AD
+
+            # If it's the end of school, and student is in isp or currently active (or inactive), move them to the alumni OU
+            # The only exception is if a student is going to be attending ISP next cycle. In that case, move them to the ISP OU
+            if school_year_end == 1 and stu_status in {"isp", "yes", "Yes", "no", "No"}:
+                if stu_status in {"yes", "Yes"} and student["ISPNextCycle"] in {"yes", "Yes"}:
+                    # print(student["SchoolUsername"])
+                    print(f"{student['SchoolUsername']} is in ISP next cycle and needs to be moved to the ISP OU.")
+                else:
+                    print(f"{student['SchoolUsername']} needs to move to alumi OU.")
+                #move to alumni
+
+            # If it's still school, process students as needed.
+            if school_year_end == 0:
+                if stu_status in {"yes", "Yes"}:
+                    # print(student["SchoolUsername"])
+                    print(f"{student['SchoolUsername']} is an active student and should be in the students OU.")
+                elif stu_status in {"isp"}:
+                    print(f"{student['SchoolUsername']} is an active ISP student and should be in the isp OU.")
 
     ad.unbind_s()
 
