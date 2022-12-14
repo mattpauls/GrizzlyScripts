@@ -85,6 +85,7 @@ def bindAD():
 # need a function to move a user to a new OU
 # ldap.rename_s('cn=UserName,ou=OldContainer,dc=example,dc=com', 'cn=UserName', 'ou=NewContainer,dc=example,dc=com')
 def moveUser(ad, user, newLocation):
+    c.print(user)
     if newLocation == "students":
         print(f"Moving {user['samAccountName']} to students OU.")
         userNewDn = "OU=students,DC=GYA,Dc=local"
@@ -284,6 +285,8 @@ def find_student_in_ad(ad, student, ad_students):
     # c.print(r)
 
     samaccountname = r[0][1]['sAMAccountName'][0].decode('UTF-8')
+    userRdn = "cn=" + r[0][1]['cn'][0].decode('UTF-8')
+
     try:
         TABEID = r[0][1]['employeeID'][0].decode('UTF-8')
     except:
@@ -293,7 +296,9 @@ def find_student_in_ad(ad, student, ad_students):
         'location': None,
         'correct_location': None,
         'TABEID': TABEID,
-        'dn': r[0][0]
+        'dn': r[0][0],
+        'userRdn': userRdn,
+        'samAccountName': samaccountname
         }
 
     return ad_students
