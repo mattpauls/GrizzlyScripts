@@ -86,16 +86,30 @@ def bindAD():
 # ldap.rename_s('cn=UserName,ou=OldContainer,dc=example,dc=com', 'cn=UserName', 'ou=NewContainer,dc=example,dc=com')
 def moveUser(ad, user, newLocation):
     if newLocation == "students":
-        print("moving to students")
-        "OU=students,DC=GYA,Dc=local"
+        print(f"Moving {user['samAccountName']} to students OU.")
+        userNewDn = "OU=students,DC=GYA,Dc=local"
     elif newLocation == "alumni":
-        print("moving to alumni")
-
+        print(f"Moving {user['samAccountName']} to alumni OU.")
+        userNewDn = getAlumniClass(user["samAccountName"])
     elif newLocation == "isp":
-        print("moving to isp")
+        print(f"Moving {user['samAccountName']} isp OU.")
         userNewDn = "OU=isp,DC=GYA,Dc=local"
 
-    # ad.rename_s(user["dn"], user["userRdn"], userNewDn)
+    # ad.rename_s(user["dn"], user["userRdn"], userNewDn) # uncomment to actually make the move.
+
+def getAlumniClass(student: str) -> str:
+    """
+    Takes a string, expected in the format username49.
+
+    Extracts the class number, and returns a string with where the account should be located in the alumni OU.
+    """
+    studentClass = student[-2:] # get the class number from the student's username
+
+    if studentClass.isdigit(): # Check if what we got was a number, if so continue, otherwise skip
+        alumniOU = "OU=class" + studentClass + ",OU=alumni,DC=gya,DC=local"
+        return alumniOU
+    else:
+        raise ValueError
 
 def searchAD(ad) -> dict:
     """"
@@ -135,7 +149,8 @@ def searchAD(ad) -> dict:
                     'correct_location': None,
                     'TABEID': TABEID,
                     'dn': r[0],
-                    'userRdn': userRdn
+                    'userRdn': userRdn,
+                    'samAccountName': samaccountname
                     }
 
     # ad.unbind_s() # uncomment for testing purposes, normally ad would be passed to this function and the unbinding would be handled outside of it.
@@ -291,8 +306,6 @@ def processStudents2():
     ad_students = searchAD(ad)
 
     school_year_end = 0
-
-    # print(ad_students)
 
     for student in students:
         # print("student is: ", student)
