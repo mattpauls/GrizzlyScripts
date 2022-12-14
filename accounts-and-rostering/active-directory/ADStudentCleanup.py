@@ -84,9 +84,18 @@ def bindAD():
 
 # need a function to move a user to a new OU
 # ldap.rename_s('cn=UserName,ou=OldContainer,dc=example,dc=com', 'cn=UserName', 'ou=NewContainer,dc=example,dc=com')
-def moveUser(ad, username, userCurrentDn, userNewDn):
-    ad.rename_s()
-    ad.rename_s('cn=testreset,ou=test,dc=GYA,dc=local', 'cn=testreset', 'ou=Grizzly,dc=GYA,dc=local')
+def moveUser(ad, user, newLocation):
+    if newLocation == "students":
+        print("moving to students")
+        "OU=students,DC=GYA,Dc=local"
+    elif newLocation == "alumni":
+        print("moving to alumni")
+
+    elif newLocation == "isp":
+        print("moving to isp")
+        userNewDn = "OU=isp,DC=GYA,Dc=local"
+
+    # ad.rename_s(user["dn"], user["userRdn"], userNewDn)
 
 def searchAD(ad) -> dict:
     """"
@@ -305,6 +314,7 @@ def processStudents2():
                 if "alumni" not in ad_students[student["SchoolUsername"]]["dn"]:
                     # move to alumni OU
                     print(f"{student['SchoolUsername']} is dropped and needs to move to alumni.")
+                    moveUser(ad, ad_students[student["SchoolUsername"]], "alumni")
                 # TODO Check if student_status == "no" and if not disabled in AD, disable in AD
 
             # If it's the end of school, and student is in isp or currently active (or inactive), move them to the alumni OU
@@ -312,17 +322,21 @@ def processStudents2():
             if school_year_end == 1 and stu_status in {"isp", "yes", "Yes", "no", "No"}:
                 if stu_status in {"yes", "Yes"} and student["ISPNextCycle"] in {"yes", "Yes"}:
                     print(f"{student['SchoolUsername']} is in ISP next cycle and needs to be moved to the ISP OU.")
+                    moveUser(ad, ad_students[student["SchoolUsername"]], "isp")
                 else:
                     print(f"{student['SchoolUsername']} needs to move to alumi OU.")
+                    moveUser(ad, ad_students[student["SchoolUsername"]], "alumni")
 
             # If it's still school, process students as needed.
             if school_year_end == 0:
-                if stu_status in {"yes", "Yes"}:
+                if stu_status in {"yes", "Yes"} and "students" not in ad_students[student["SchoolUsername"]]["dn"]:
                     print(f"{student['SchoolUsername']} is an active student and should be in the students OU.")
-                elif stu_status in {"isp"}:
+                    moveUser(ad, ad_students[student["SchoolUsername"]], "students")
+                elif stu_status in {"isp"} and "isp" not in ad_students[student["SchoolUsername"]]["dn"]:
                     print(f"{student['SchoolUsername']} is an active ISP student and should be in the isp OU.")
+                    moveUser(ad, ad_students[student["SchoolUsername"]], "isp")
 
     ad.unbind_s()
 
-# processStudents2()
-searchAD()
+processStudents2()
+# searchAD()
