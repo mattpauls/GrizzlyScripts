@@ -8,6 +8,7 @@ c = Console()
 
 load_dotenv()
 
+
 def filemakerGetAll():
     """
     Returns list of dictionaries, one for each cadet in FileMaker.
@@ -59,10 +60,9 @@ def filemakerGetAll():
 
     fms.logout()
 
-    print(f"{ len(activecadets) } students found.")
+    c.print(f"{ len(activecadets) } students found in FileMaker.")
 
     return activecadets
-
 
 
 def bindAD():
@@ -74,18 +74,11 @@ def bindAD():
     l = ldap.initialize(os.getenv("AD_SERVER"))
     l.simple_bind_s(os.getenv("AD_USERNAME"), os.getenv("AD_PASSWORD"))
     l.set_option(ldap.OPT_REFERRALS, 0)
-    # result = l.search_s("dc=GYA, dc=local", ldap.SCOPE_SUBTREE, 'userPrincipalName=mpauls@mygya.com', ['memberOf'])
-    # print(result[0][1]['description']) # this will pull out just the description
-    # print(result)
+
     return l
 
-# THIS WORKS (BELOW)
-# l.rename_s('cn=testreset,ou=test,dc=GYA,dc=local', 'cn=testreset', 'ou=Grizzly,dc=GYA,dc=local')
 
-# need a function to move a user to a new OU
-# ldap.rename_s('cn=UserName,ou=OldContainer,dc=example,dc=com', 'cn=UserName', 'ou=NewContainer,dc=example,dc=com')
 def moveUser(ad, user, newLocation):
-    c.print(user)
     if newLocation == "students":
         print(f"Moving {user['samAccountName']} to students OU.")
         userNewDn = "OU=students,DC=GYA,Dc=local"
@@ -97,7 +90,8 @@ def moveUser(ad, user, newLocation):
         print(f"Moving {user['samAccountName']} isp OU.")
         userNewDn = "OU=isp,DC=GYA,Dc=local"
 
-    # ad.rename_s(user["dn"], user["userRdn"], userNewDn) # uncomment to actually make the move.
+    ad.rename_s(user["dn"], user["userRdn"], userNewDn) # uncomment to actually make the move.
+
 
 def getAlumniClass(student: str) -> str:
     """
@@ -112,6 +106,7 @@ def getAlumniClass(student: str) -> str:
         return alumniOU
     else:
         raise ValueError
+
 
 def searchAD(ad) -> dict:
     """"
@@ -222,10 +217,11 @@ def processStudents():
                     print(f"{fm_username} is dropped and needs to move to alumni.")
                     moveUser(ad, ad_students[fm_username], "alumni")
                 # TODO Check if student_status == "no" and if not disabled in AD, disable in AD
+                # TODO remove from students group
 
             # If it's the end of school, and student is in isp or currently active (or inactive), move them to the alumni OU
             # The only exception is if a student is going to be attending ISP next cycle. In that case, move them to the ISP OU
-            if school_year_end == 1 and stu_status in {"isp", "yes", "Yes", "no", "No"}:
+            if school_year_end == "1" and stu_status in {"isp", "yes", "Yes", "no", "No"}:
                 if stu_status in {"yes", "Yes"} and student["ISPNextCycle"] in {"yes", "Yes"}:
                     print(f"{fm_username} is in ISP next cycle and needs to be moved to the ISP OU.")
                     moveUser(ad, ad_students[fm_username], "isp")
@@ -234,7 +230,7 @@ def processStudents():
                     moveUser(ad, ad_students[fm_username], "alumni")
 
             # If it's still school, process students as needed.
-            if school_year_end == 0:
+            if school_year_end == "0":
                 if stu_status in {"yes", "Yes"} and "students" not in ad_students[fm_username]["dn"]:
                     print(f"{fm_username} is an active student and should be in the students OU.")
                     moveUser(ad, ad_students[fm_username], "students")
@@ -244,4 +240,6 @@ def processStudents():
 
     ad.unbind_s()
 
-processStudents()
+
+if __name__ == "__main__":
+    processStudents()
