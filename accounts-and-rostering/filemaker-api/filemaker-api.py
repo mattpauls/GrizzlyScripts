@@ -71,28 +71,28 @@ def filemaker_get_records(auth: bool = False, fields: list = None) -> list:
         for record in foundset:
             cadet = {}
 
-            if fields:
-                default_fields = fields
+            # if fields:
+            #     default_fields = fields
 
-            for field in default_fields:
-                c.print(field)
-                cadet[field] = record.field
+            # for field in default_fields:
+            #     c.print(field)
+            #     cadet[field] = record.field
 
-            # cadet["StatusActive"] =  record.StatusActive
-            # cadet["NameLast"] = record.NameLast
-            # cadet["NameFirst"] = record.NameFirst
-            # cadet["TABEID"] = record.TABEID
-            # cadet["Group"] = record.Group
-            # cadet["Platoon"] = record.Platoon
-            # cadet["SchoolUsername"] = record.SchoolUsername
-            # cadet["SchoolEmail"] = record.SchoolEmail
-            # cadet["SchoolEmailPassword"] = record.SchoolEmailPassword
-            # cadet["GradeLevel"] = record.GradeLevel
-            # cadet["ELClassification"] = record.ELClassification
-            # cadet["Gender"] = record.Gender
-            # cadet["Birthday"] = record.Birthday
-            # cadet["SpecialEducationIEP"] = record.SpecialEducationIEP
-            # cadet["ISPNextCycle"] = record.ISPNextCycle
+            cadet["StatusActive"] =  record.StatusActive
+            cadet["NameLast"] = record.NameLast
+            cadet["NameFirst"] = record.NameFirst
+            cadet["TABEID"] = record.TABEID
+            cadet["Group"] = record.Group
+            cadet["Platoon"] = record.Platoon
+            cadet["SchoolUsername"] = record.SchoolUsername
+            cadet["SchoolEmail"] = record.SchoolEmail
+            cadet["SchoolEmailPassword"] = record.SchoolEmailPassword
+            cadet["GradeLevel"] = record.GradeLevel
+            cadet["ELClassification"] = record.ELClassification
+            cadet["Gender"] = record.Gender
+            cadet["Birthday"] = record.Birthday
+            cadet["SpecialEducationIEP"] = record.SpecialEducationIEP
+            cadet["ISPNextCycle"] = record.ISPNextCycle
 
             activecadets.append(cadet)
 
