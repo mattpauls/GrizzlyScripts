@@ -9,7 +9,7 @@ c = Console()
 load_dotenv()
 
 
-def filemaker_get_records(auth: bool = False, fields: list = None) -> list:
+def filemaker_get_records(auth: bool = False, fields: list = None, limit: int = 500) -> list:
     """Gets records in FileMaker Server.
 
     Parameters
@@ -22,12 +22,8 @@ def filemaker_get_records(auth: bool = False, fields: list = None) -> list:
     Returns
     -------
     list
-        a list of dictionaries, one for each record in FileMaker
+        A list of dictionaries, one for each record in FileMaker.
     """
-    # TODO add option to pass a switch to turn on getpass.getuser() and getpass() instead of using the built-in .env
-    # Could also use getpass.getuser() if we wanted.
-    # Prompt for FileMaker api password
-    # fmpassword = getpass()
 
     if auth:
         fms_username = getpass.getuser()
@@ -46,12 +42,8 @@ def filemaker_get_records(auth: bool = False, fields: list = None) -> list:
         api_version='vLatest')
 
     try:
-        fms.login()
-
-        # Get all records
-        foundset = fms.get_records(limit=500)
-
         activecadets = []
+
         default_fields = [
             "StatusActive",
             "NameLast",
@@ -68,31 +60,19 @@ def filemaker_get_records(auth: bool = False, fields: list = None) -> list:
             "ISPNextCycle"
         ]
 
+        fms.login()
+
+        # Get all records
+        foundset = fms.get_records(limit=limit)
+
         for record in foundset:
             cadet = {}
 
-            # if fields:
-            #     default_fields = fields
+            if fields:
+                default_fields = fields
 
-            # for field in default_fields:
-            #     c.print(field)
-            #     cadet[field] = record.field
-
-            cadet["StatusActive"] =  record.StatusActive
-            cadet["NameLast"] = record.NameLast
-            cadet["NameFirst"] = record.NameFirst
-            cadet["TABEID"] = record.TABEID
-            cadet["Group"] = record.Group
-            cadet["Platoon"] = record.Platoon
-            cadet["SchoolUsername"] = record.SchoolUsername
-            cadet["SchoolEmail"] = record.SchoolEmail
-            cadet["SchoolEmailPassword"] = record.SchoolEmailPassword
-            cadet["GradeLevel"] = record.GradeLevel
-            cadet["ELClassification"] = record.ELClassification
-            cadet["Gender"] = record.Gender
-            cadet["Birthday"] = record.Birthday
-            cadet["SpecialEducationIEP"] = record.SpecialEducationIEP
-            cadet["ISPNextCycle"] = record.ISPNextCycle
+            for field in default_fields:
+                cadet[field] = getattr(record, field)
 
             activecadets.append(cadet)
 
@@ -100,7 +80,7 @@ def filemaker_get_records(auth: bool = False, fields: list = None) -> list:
 
         return activecadets
     except:
-        pass
+        raise
     finally:
         fms.logout()
 
