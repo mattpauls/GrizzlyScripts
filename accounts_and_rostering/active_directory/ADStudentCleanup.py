@@ -1,69 +1,19 @@
 import os
+import sys
 import fmrest
 import ldap
 from dotenv import load_dotenv
 from rich.console import Console
 
+# Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
+FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
+sys.path.append(os.path.dirname(FM_DIR))
+
+from filemaker_api.filemaker_api import filemaker_get_records
+
 c = Console()
 
 load_dotenv()
-
-
-def filemakerGetAll():
-    """
-    Returns list of dictionaries, one for each cadet in FileMaker.
-    """
-    # Could also use getpass.getuser() if we wanted.
-    # Prompt for FileMaker api password
-    # fmpassword = getpass()
-
-    fms = fmrest.Server(os.getenv("FMS_URL"), 
-    user=os.getenv("FMS_USERNAME"), 
-    password=os.getenv("FMS_PASSWORD"), 
-    database=os.getenv("FMS_DATABASE"), 
-    layout=os.getenv("FMS_LAYOUT"),
-    api_version='vLatest')
-
-    fms.login()
-
-    # Get all records
-    foundset = fms.get_records(limit=500)
-
-    activecadets = []
-
-    for record in foundset:
-        cadet = {
-        "NameLast": "",
-        "NameFirst": "",
-        "TABEID": "",
-        "Group": "",
-        "Platoon": ""
-        }
-
-        cadet["StatusActive"] =  record.StatusActive
-        cadet["NameLast"] = record.NameLast
-        cadet["NameFirst"] = record.NameFirst
-        cadet["TABEID"] = record.TABEID
-        cadet["Group"] = record.Group
-        cadet["Platoon"] = record.Platoon
-        cadet["SchoolUsername"] = record.SchoolUsername
-        cadet["SchoolEmail"] = record.SchoolEmail
-        cadet["SchoolEmailPassword"] = record.SchoolEmailPassword
-        cadet["GradeLevel"] = record.GradeLevel
-        cadet["ELClassification"] = record.ELClassification
-        cadet["Gender"] = record.Gender
-        cadet["Birthday"] = record.Birthday
-        cadet["SpecialEducationIEP"] = record.SpecialEducationIEP
-        cadet["ISPNextCycle"] = record.ISPNextCycle
-
-        activecadets.append(cadet)
-
-    fms.logout()
-
-    c.print(f"{ len(activecadets) } students found in FileMaker.")
-
-    return activecadets
-
 
 def bindAD():
     """"
@@ -186,7 +136,7 @@ def find_student_in_ad(ad, student, ad_students):
 
 
 def processStudents():
-    students = filemakerGetAll()
+    students = filemaker_get_records()
     ad = bindAD()
 
     ad_students = searchAD(ad)
