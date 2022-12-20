@@ -50,6 +50,19 @@ def stucsvcreator(csvfilename, headers):
     stucsv_out.write(headers)
     stucsv_out.close()
 
+def stu_csv_creator_dict(file_path, header):
+    with open(file_path, "w") as f:
+        writer = csv.DictWriter(f, fieldnames=header)
+        writer.writeheader()
+
+def stu_csv_writer_dict(file_path, header, d):
+    with open(file_path, "a") as f:
+        writer = csv.DictWriter(f, fieldnames=header)
+        writer.writeheader()
+
+        for row in d:
+            writer.writerow(d)
+
 def stucsvwriter(csvfilename, row):
     csvfile = outputfolder + os.path.sep + csvfilename
     stucsv_out = open(csvfile, "a")
@@ -103,7 +116,7 @@ def usernamegen():
     print("Generating usernames and passwords...")
     for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating username/password for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
-        
+
         #Set row to NULL, just in case something goes wrong:
         row = None
 
@@ -121,7 +134,7 @@ def usernamegen():
         # Otherwise, just split on spaces and take the first of the last names
         else:
             lastMod = lastMod[0]
-        
+
         lastMod = unidecode(lastMod)
         first = student["NameFirst"].split(",")[0]
         firstMod = first.replace("-", "")
@@ -225,7 +238,7 @@ def importLexia():
         if (student["Group"] == "A") or (student["Group"] in "H1") or (student["ELClassification"] == "L"):
             # if student.Group is A or H1 or if ELClassification is "L"
             print(student)
-            
+
             if student["Group"] in 'H1': # have to use 'in' for some reason. Not sure why.
                 lexiaClass = "H1 Group"
                 print("H1 Class: " + lexiaClass)
@@ -237,7 +250,6 @@ def importLexia():
                 print("EL Class: " + lexiaClass)
             else:
                 print("Something went wrong here.")
-            
 
             lexiarow = {
             "First Name": "",
@@ -249,7 +261,7 @@ def importLexia():
             "School": "",
             "Student Number": ""
             }
-            
+
             lexiarow["First Name"] = student["NameFirst"]
             lexiarow["Last Name"] = student["NameLast"]
             lexiarow["Username"] = student["SchoolUsername"]
@@ -315,7 +327,7 @@ def importMathspace():
 
 def importGoGuardianPLT():
     header = "email\r\n"
-    
+
     print("Generating GoGuardian...")
     for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
@@ -333,6 +345,26 @@ def importGoGuardianPLT():
         stucsvwriter(filename, row)
 
 
+def import_edmentum():
+    # First Name,Middle Name,Last Name,User Name,Password,Role,Status,Grade,SIS ID,Federal ID,Email Address,State ID,Gender,Date of Birth,Location,Target Graduation Year,Socio Economic Status,Special Needs,Ethnic Origin,Migrant,Foster Care,Homeless,Armed Forces,Primary Language,Educational Program,AYP Reporting Category,Labor Force,Public Assistance,Disability Status,Rural Residency Status,Primary Learning Reason or Goal for Attending,Secondary Learning Reason or Goal for Attending,Post Secondary Program Enrollment Type,Educator Permissions
+    header = ["First Name","Last Name","User Name","Password","Role","Status","Grade","SIS ID","Email Address","Gender","Date of Birth"]
+
+    print("Generating Edmentum...")
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
+        print(f"Generating row for student: {student['NameLast']}, {student['NameFirst']}")
+        filename = "edmentum.csv"
+        file_path = os.path.join(outputfolder, filename)
+
+        if Path(file_path).is_file():
+            print(file_path)
+        else:
+            #create file
+            print("Creating file in output folder...")
+            stu_csv_creator_dict(file_path, header)
+
+        # row = student["SchoolEmail"] + "\r\n"
+
+        # stucsvwriter(filename, row)
 
 
 def main():
@@ -346,6 +378,7 @@ def main():
     print("7. Create Mangahigh import file.")
     print("8. Create Mathspace import files.")
     print("9. Create GoGuardian PLT import files.")
+    print("10. Create Edmentum import files.")
     print("0. Exit.")
     print("====================")
     print("\n")
@@ -404,6 +437,9 @@ def main():
         main()
     elif choice == "9":
         importGoGuardianPLT()
+        main()
+    elif choice == "10":
+        import_edmentum()
         main()
     else:
         print("Oops, please try again!")
