@@ -9,8 +9,6 @@ import csv
 import random
 from unidecode import unidecode
 #from mailmerge import MailMerge
-import fmrest
-# import easygui
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -65,7 +63,7 @@ def stucsvwriter2(csvfilename, row):
 
 def printvalues():
     print("What is in Filemaker?")
-    activecadets = filemaker_get_records()
+    activecadets = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
     for cadet in activecadets:
         print(cadet["NameLast"])
     return
@@ -103,7 +101,7 @@ def usernamegen():
     stucsvcreator(filename, header)
 
     print("Generating usernames and passwords...")
-    for student in filemaker_get_records():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating username/password for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
         
         #Set row to NULL, just in case something goes wrong:
@@ -212,7 +210,7 @@ def importAD():
     with open(os.path.join(outputfolder, 'adimport.csv'), 'w') as output_file:
         dict_writer = csv.DictWriter(output_file, header, extrasaction='ignore')
         dict_writer.writeheader()
-        dict_writer.writerows(filemaker_get_records())
+        dict_writer.writerows(filemaker_get_records(query=[{'StatusActive': 'Yes'}]))
 
 def importLexia():
     #filename = "adimport.csv"
@@ -223,7 +221,7 @@ def importLexia():
 
     lexia = []
 
-    for student in filemaker_get_records():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         if (student["Group"] == "A") or (student["Group"] in "H1") or (student["ELClassification"] == "L"):
             # if student.Group is A or H1 or if ELClassification is "L"
             print(student)
@@ -282,7 +280,7 @@ def importManga():
     stucsvcreator(filename, header)
 
     print("Generating usernames and passwords...")
-    for student in filemaker_get_records():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
         row = student["NameFirst"] + "," + student["NameLast"] + "," + str(classNo) + " - " + student["Group"] + " Group," + student["SchoolUsername"] + "," + student["SchoolEmailPassword"] + "," + "437494" + "," + "\r\n"
 
@@ -300,7 +298,7 @@ def importMathspace():
     header = "First name,Last name,Email (optional),Parent email (optional)\r\n"
 
     print("Generating mathspace...")
-    for student in filemaker_get_records():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
         filename = student["Group"] + " Group Mathspace.csv"
 
@@ -319,7 +317,7 @@ def importGoGuardianPLT():
     header = "email\r\n"
     
     print("Generating GoGuardian...")
-    for student in filemaker_get_records():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
         filename = student["Platoon"] + "PLT GoGuardian.csv"
 
