@@ -9,7 +9,7 @@ c = Console()
 load_dotenv()
 
 
-def filemaker_get_records(auth: bool = False, fields: list = None, limit: int = 500) -> list:
+def filemaker_get_records(auth: bool = False, fields: list = None, limit: int = 500, query: dict = None) -> list:
     """Gets records in FileMaker Server.
 
     Parameters
@@ -18,6 +18,8 @@ def filemaker_get_records(auth: bool = False, fields: list = None, limit: int = 
         A flag used to use interactive login rather than the .env file.
     fields: list, optional
         A list of strings which correspond to records in the FileMaker database.
+    query: dict, optional
+        An optional list of dicts with a query. Default is to find all records, a query will modify that. Example: [{'StatusActive': 'Yes'}]
 
     Returns
     -------
@@ -62,8 +64,11 @@ def filemaker_get_records(auth: bool = False, fields: list = None, limit: int = 
 
         fms.login()
 
-        # Get all records
-        foundset = fms.get_records(limit=limit)
+        # Get records
+        if query:
+            foundset = fms.find(query, limit=limit)
+        else:
+            foundset = fms.get_records(limit=limit)
 
         for record in foundset:
             cadet = {}
