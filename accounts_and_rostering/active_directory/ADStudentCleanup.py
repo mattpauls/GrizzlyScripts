@@ -1,6 +1,5 @@
 import os
 import sys
-import fmrest
 import ldap
 from dotenv import load_dotenv
 from rich.console import Console
