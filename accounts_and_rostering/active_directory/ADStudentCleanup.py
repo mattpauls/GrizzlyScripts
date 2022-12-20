@@ -4,7 +4,7 @@ import ldap
 from dotenv import load_dotenv
 from rich.console import Console
 
-# Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
+# Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out without moving my files around in the directory.
 FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
 sys.path.append(os.path.dirname(FM_DIR))
 
