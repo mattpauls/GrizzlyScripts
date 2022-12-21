@@ -11,6 +11,7 @@ from unidecode import unidecode
 #from mailmerge import MailMerge
 from pathlib import Path
 from dotenv import load_dotenv
+from rich.console import Console
 
 # Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
 FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
@@ -19,6 +20,8 @@ sys.path.append(os.path.dirname(FM_DIR))
 from filemaker_api.filemaker_api import filemaker_get_records
 
 load_dotenv()
+
+c = Console()
 
 # Set variables
 classNo = str(os.getenv("CLASS_NUMBER")) # Update this to the current class number
@@ -50,18 +53,13 @@ def stucsvcreator(csvfilename, headers):
     stucsv_out.write(headers)
     stucsv_out.close()
 
-def stu_csv_creator_dict(file_path, header):
+def stu_csv_creator_dict(file_path, header, d):
     with open(file_path, "w") as f:
-        writer = csv.DictWriter(f, fieldnames=header)
-        writer.writeheader()
-
-def stu_csv_writer_dict(file_path, header, d):
-    with open(file_path, "a") as f:
-        writer = csv.DictWriter(f, fieldnames=header)
+        writer = csv.DictWriter(f, fieldnames=header, extrasaction="ignore")
         writer.writeheader()
 
         for row in d:
-            writer.writerow(d)
+            writer.writerow(row)
 
 def stucsvwriter(csvfilename, row):
     csvfile = outputfolder + os.path.sep + csvfilename
@@ -350,21 +348,32 @@ def import_edmentum():
     header = ["First Name","Last Name","User Name","Password","Role","Status","Grade","SIS ID","Email Address","Gender","Date of Birth"]
 
     print("Generating Edmentum...")
-    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
-        print(f"Generating row for student: {student['NameLast']}, {student['NameFirst']}")
+
+    students = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
+
+    # Modify dictionary with new keys:
+    for s in students:
+        s["First Name"] = s.pop("NameFirst")
+        s["Last Name"] = s.pop("NameLast")
+        s["User Name"] = s.pop("SchoolUsername")
+        s["Password"] = s.pop("SchoolEmailPassword")
+        s["Role"] = "learner"
+        s["Status"] = "InActive"
+        s["Grade"] = s.pop("GradeLevel")
+        s["SIS ID"] = s.pop("TABEID")
+        s["Email Address"] = s.pop("SchoolEmail")
+        s["Gender"] = s.pop("Gender")
+        s["Date of Birth"] = s.pop("Birthday")
+
+    c.print(students)
+
+    for student in students:
+        print(f"Generating row for student: {student['Last Name']}, {student['First Name']}")
         filename = "edmentum.csv"
         file_path = os.path.join(outputfolder, filename)
 
-        if Path(file_path).is_file():
-            print(file_path)
-        else:
-            #create file
-            print("Creating file in output folder...")
-            stu_csv_creator_dict(file_path, header)
-
-        # row = student["SchoolEmail"] + "\r\n"
-
-        # stucsvwriter(filename, row)
+        print("Creating file in output folder...")
+        stu_csv_creator_dict(file_path, header, students)
 
 
 def main():
