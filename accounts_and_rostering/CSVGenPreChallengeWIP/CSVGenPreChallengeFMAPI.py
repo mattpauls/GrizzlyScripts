@@ -365,7 +365,7 @@ def import_edmentum():
         s["Gender"] = s.pop("Gender")
         s["Date of Birth"] = s.pop("Birthday")
 
-    c.print(students)
+    # c.print(students)
 
     for student in students:
         print(f"Generating row for student: {student['Last Name']}, {student['First Name']}")
