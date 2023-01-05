@@ -1,5 +1,6 @@
 __author__ = 'mattpauls'
 
+import sys
 import os
 import csv
 import fmrest
@@ -7,6 +8,12 @@ import re
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
+
+# Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
+FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
+sys.path.append(os.path.dirname(FM_DIR))
+
+from filemaker_api.filemaker_api import filemaker_get_records
 
 c = Console()
 
@@ -22,135 +29,65 @@ sectionsFile = os.getenv("SECTIONS_SOURCE")
 enrollmentsFile = os.getenv("ENROLLMENTS_SOURCE")
 
 
-def filemakerGetActive() -> dict:
-    """
-    Returns a dictionary of cadets in FileMaker.
-    """
-
-    fms = fmrest.Server(os.getenv("FMS_URL"), 
-        user=os.getenv("FMS_USERNAME"), 
-        password=os.getenv("FMS_PASSWORD"), 
-        database=os.getenv("FMS_DATABASE"), 
-        layout=os.getenv("FMS_LAYOUT"),
-        api_version="vLatest")
-
-    fms.login()
-
-    find_query = [{'StatusActive': 'Yes'}]
-    foundset = fms.find(find_query, limit=os.getenv("FMS_LIMIT"))
-
-    activecadets = []
-
-    for record in foundset:
-        cadet = {
-        "NameLast": "",
-        "NameFirst": "",
-        "TABEID": "",
-        "Group": "",
-        "Platoon": ""
-        }
-
-        cadet["NameLast"] = record.NameLast
-        cadet["NameFirst"] = record.NameFirst
-        cadet["TABEID"] = record.TABEID
-        cadet["Group"] = record.Group
-        cadet["Platoon"] = record.Platoon
-        cadet["SchoolUsername"] = record.SchoolUsername
-        cadet["SchoolEmail"] = record.SchoolEmail
-        cadet["SchoolEmailPassword"] = record.SchoolEmailPassword
-        cadet["GradeLevel"] = record.GradeLevel
-        cadet["ELClassification"] = record.ELClassification
-        cadet["Gender"] = record.Gender
-        cadet["Birthday"] = record.Birthday
-        cadet["SpecialEducationIEP"] = record.SpecialEducationIEP
-
-        activecadets.append(cadet)
-
-    fms.logout()
-
-    c.print(f"Number of students found: {len(activecadets)}") # number in found set
-
-    return activecadets
-
-
-# Define CSV Reader for Filemaker raw export. Filemaker does not export headers with the CSV, so don't skip the first line.
-def filemakerexportstucsvreader(filepath):
-    stucsv = open(filepath, 'rU')
-    csv_stucsv = csv.reader(stucsv)
-    return csv_stucsv
-# End CSV Reader definition
-
-
-# Define CSV Reader
-def stucsvreader(filepath):
-    stucsv = open(filepath, 'rU')
-    csv_stucsv = csv.reader(stucsv)
-    next(csv_stucsv)
-    return csv_stucsv
-# End CSV Reader definition
-
-
 def stucsvcreator(csvfilename, headers):
-    csvfile = outputfolder + os.path.sep + csvfilename
+    csvfile = os.path.join(outputfolder, csvfilename)
     stucsv_out = open(csvfile, "w")
     stucsv_out.write(headers)
     stucsv_out.close()
 
 
 def stucsvwriter(csvfilename, row):
-    csvfile = outputfolder + os.path.sep + csvfilename
+    csvfile = os.path.join(outputfolder, csvfilename)
     stucsv_out = open(csvfile, "a")
     stucsv_out.write(row)
     stucsv_out.close()
 
 
 def stucsvwriter2(csvfilename, row):
-    csvfile = outputfolder + os.path.sep + csvfilename
+    csvfile = os.path.join(outputfolder, csvfilename)
     w = csv.writer(open(csvfile,"a"))
     w.writerow(row)
 
+def stu_csv_creator_dict(file_path, header, d):
+    with open(file_path, "w") as f:
+        writer = csv.DictWriter(f, fieldnames=header, extrasaction="ignore")
+        writer.writeheader()
 
-def printvalues():
-    print("What is in Filemaker?")
-    activecadets = filemakerGetActive()
-    for cadet in activecadets:
-        print(cadet["NameLast"])
-    return
-
+        for row in d:
+            writer.writerow(row)
 
 #Username Generator
-def studentsgen():
+def studentsgen() -> None:
     """
-    Generates students.csv.
+    Generates a file students.csv in the output folder, properly formatted for importing to Clever.
     """
     filename = "students.csv"
-    header = "School_id,Student_id,Student_number,Last_name,First_name,Grade,Gender,DOB,IEP_status,Student_email\r\n"
-    print("Creating file in output folder...")
-    stucsvcreator(filename, header)
+    header = ["School_id","Student_id","Student_number","Last_name","First_name","Grade","Gender","DOB","IEP_status","Student_email"]
 
-    print("Generating students.csv...")
-    for student in filemakerGetActive():
-        print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
+    students = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
 
-        #Set row to NULL, just in case something goes wrong:
-        row = None
+    # Modify dictionary with new keys
+    for s in students:
+        c.print(f"Configuring row for {s['NameLast']}, {s['NameFirst']}")
+        s["School_id"] = 6
+        s["Student_id"] = s["TABEID"]
+        s["Student_number"] = s.pop("TABEID")
+        s["Last_name"] = s.pop("NameLast")
+        s["First_name"] = s.pop("NameFirst")
+        s["Grade"] = s.pop("GradeLevel")
+        s["DOB"] = s.pop("Birthday")
+        s["Student_email"] = s.pop("SchoolEmail")
 
-        School_id = "6"
-        Student_id = str(student["TABEID"])
-        Student_number = str(student["TABEID"])
-        Last_name = student["NameLast"]
-        First_name = student["NameFirst"]
-        Grade = str(student["GradeLevel"])
-        Gender = student["Gender"]
-        DOB = student["Birthday"]
-        if student["SpecialEducationIEP"] == "yes":
-            IEP_status = "Y"
+        if s["SpecialEducationIEP"] in ["Yes", "yes"]:
+            s["IEP_status"] = "Y"
         else:
-            IEP_status = "N"
-        Student_email = student["SchoolEmail"]
+            s["IEP_status"] = "N"
 
-        row = School_id + "," + Student_id + "," + Student_number + "," + Last_name + "," + First_name + "," + Grade + "," + Gender + "," + DOB + "," + IEP_status + "," + Student_email + "\r\n"
-        stucsvwriter(filename, row)
+    file_path = os.path.join(outputfolder, filename)
+
+    c.print("\n")
+    c.print(f"Creating file {filename} in {outputfolder}")
+    stu_csv_creator_dict(file_path, header, students)
 
 
 def enrollmentsgen():
@@ -167,7 +104,7 @@ def enrollmentsgen():
 
         writer.writeheader()
 
-        students = filemakerGetActive() # get current students from FileMaker
+        students = filemaker_get_records(query=[{'StatusActive': 'Yes'}]) # get current students from FileMaker
 
         for student in students:
             print("Working on student: " + student["NameLast"])
