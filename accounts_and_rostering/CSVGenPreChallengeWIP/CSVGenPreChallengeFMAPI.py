@@ -9,12 +9,19 @@ import csv
 import random
 from unidecode import unidecode
 #from mailmerge import MailMerge
-import fmrest
-# import easygui
 from pathlib import Path
 from dotenv import load_dotenv
+from rich.console import Console
+
+# Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
+FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
+sys.path.append(os.path.dirname(FM_DIR))
+
+from filemaker_api.filemaker_api import filemaker_get_records
 
 load_dotenv()
+
+c = Console()
 
 # Set variables
 classNo = str(os.getenv("CLASS_NUMBER")) # Update this to the current class number
@@ -23,73 +30,6 @@ print("Output folder is: " + outputfolder)
 
 # Get the current working directory of this python script
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-
-def filemakerGetActive():
-    """
-    Returns a dictionary of cadets in FileMaker.
-    """
-
-    fms = fmrest.Server(os.getenv("FMS_URL"), 
-    user=os.getenv("FMS_USERNAME"), 
-    password=os.getenv("FMS_PASSWORD"), 
-    database=os.getenv("FMS_DATABASE"), 
-    layout=os.getenv("FMS_LAYOUT"))
-
-    fms.login()
-
-    #record = fms.get_record(310)
-    #print(record.NameLast)
-
-    find_query = [{'StatusActive': 'Yes'}]
-    foundset = fms.find(find_query, limit=500)
-    #print(foundset)
-
-    global activecadets # oooh why did I use global!?
-    activecadets = []
-
-    for record in foundset:
-        cadet = {
-        "NameLast": "",
-        "NameFirst": "",
-        "TABEID": "",
-        "Group": "",
-        "Platoon": ""
-        }
-        
-        cadet["NameLast"] = record.NameLast
-        cadet["NameFirst"] = record.NameFirst
-        cadet["TABEID"] = record.TABEID
-        cadet["Group"] = record.Group
-        cadet["Platoon"] = record.Platoon
-        cadet["SchoolUsername"] = record.SchoolUsername
-        cadet["SchoolEmail"] = record.SchoolEmail
-        cadet["SchoolEmailPassword"] = record.SchoolEmailPassword
-        cadet["GradeLevel"] = record.GradeLevel
-        cadet["ELClassification"] = record.ELClassification
-
-        activecadets.append(cadet)
-        #print(record.NameLast + ", " + record.NameFirst)
-        #print(record.TABEID)
-        #print(record.Group)
-        #print(record.Platoon)
-        # print(record.keys())
-
-    fms.logout()
-
-    print("Number of students found: %s" % len(activecadets)) # number in found set
-
-    return activecadets
-#Uncomment below if importing directly into Google Apps using this tool.
-#gam = "C:\\gam\\gam.exe"
-
-#Uncomment below lines to enable GUI selector
-#Tk().withdraw() # we don't want a full GUI, so keep the root window from appearing
-#stucsv = askopenfilename()
-
-#Tkinter.Tk().withdraw()
-
-#outputfolder = tkFileDialog.askdirectory(title="Choose an output directory.", message="Choose an output directory.")
-
 
 
 # Define CSV Reader for Filemaker raw export. Filemaker does not export headers with the CSV, so don't skip the first line.
@@ -113,6 +53,14 @@ def stucsvcreator(csvfilename, headers):
     stucsv_out.write(headers)
     stucsv_out.close()
 
+def stu_csv_creator_dict(file_path, header, d):
+    with open(file_path, "w") as f:
+        writer = csv.DictWriter(f, fieldnames=header, extrasaction="ignore")
+        writer.writeheader()
+
+        for row in d:
+            writer.writerow(row)
+
 def stucsvwriter(csvfilename, row):
     csvfile = outputfolder + os.path.sep + csvfilename
     stucsv_out = open(csvfile, "a")
@@ -126,7 +74,7 @@ def stucsvwriter2(csvfilename, row):
 
 def printvalues():
     print("What is in Filemaker?")
-    activecadets = filemakerGetActive()
+    activecadets = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
     for cadet in activecadets:
         print(cadet["NameLast"])
     return
@@ -164,9 +112,9 @@ def usernamegen():
     stucsvcreator(filename, header)
 
     print("Generating usernames and passwords...")
-    for student in filemakerGetActive():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating username/password for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
-        
+
         #Set row to NULL, just in case something goes wrong:
         row = None
 
@@ -184,7 +132,7 @@ def usernamegen():
         # Otherwise, just split on spaces and take the first of the last names
         else:
             lastMod = lastMod[0]
-        
+
         lastMod = unidecode(lastMod)
         first = student["NameFirst"].split(",")[0]
         firstMod = first.replace("-", "")
@@ -273,7 +221,7 @@ def importAD():
     with open(os.path.join(outputfolder, 'adimport.csv'), 'w') as output_file:
         dict_writer = csv.DictWriter(output_file, header, extrasaction='ignore')
         dict_writer.writeheader()
-        dict_writer.writerows(filemakerGetActive())
+        dict_writer.writerows(filemaker_get_records(query=[{'StatusActive': 'Yes'}]))
 
 def importLexia():
     #filename = "adimport.csv"
@@ -284,11 +232,11 @@ def importLexia():
 
     lexia = []
 
-    for student in filemakerGetActive():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         if (student["Group"] == "A") or (student["Group"] in "H1") or (student["ELClassification"] == "L"):
             # if student.Group is A or H1 or if ELClassification is "L"
             print(student)
-            
+
             if student["Group"] in 'H1': # have to use 'in' for some reason. Not sure why.
                 lexiaClass = "H1 Group"
                 print("H1 Class: " + lexiaClass)
@@ -300,7 +248,6 @@ def importLexia():
                 print("EL Class: " + lexiaClass)
             else:
                 print("Something went wrong here.")
-            
 
             lexiarow = {
             "First Name": "",
@@ -312,7 +259,7 @@ def importLexia():
             "School": "",
             "Student Number": ""
             }
-            
+
             lexiarow["First Name"] = student["NameFirst"]
             lexiarow["Last Name"] = student["NameLast"]
             lexiarow["Username"] = student["SchoolUsername"]
@@ -343,7 +290,7 @@ def importManga():
     stucsvcreator(filename, header)
 
     print("Generating usernames and passwords...")
-    for student in filemakerGetActive():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
         row = student["NameFirst"] + "," + student["NameLast"] + "," + str(classNo) + " - " + student["Group"] + " Group," + student["SchoolUsername"] + "," + student["SchoolEmailPassword"] + "," + "437494" + "," + "\r\n"
 
@@ -361,7 +308,7 @@ def importMathspace():
     header = "First name,Last name,Email (optional),Parent email (optional)\r\n"
 
     print("Generating mathspace...")
-    for student in filemakerGetActive():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
         filename = student["Group"] + " Group Mathspace.csv"
 
@@ -378,9 +325,9 @@ def importMathspace():
 
 def importGoGuardianPLT():
     header = "email\r\n"
-    
+
     print("Generating GoGuardian...")
-    for student in filemakerGetActive():
+    for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
         print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
         filename = student["Platoon"] + "PLT GoGuardian.csv"
 
@@ -396,6 +343,37 @@ def importGoGuardianPLT():
         stucsvwriter(filename, row)
 
 
+def import_edmentum():
+    # First Name,Middle Name,Last Name,User Name,Password,Role,Status,Grade,SIS ID,Federal ID,Email Address,State ID,Gender,Date of Birth,Location,Target Graduation Year,Socio Economic Status,Special Needs,Ethnic Origin,Migrant,Foster Care,Homeless,Armed Forces,Primary Language,Educational Program,AYP Reporting Category,Labor Force,Public Assistance,Disability Status,Rural Residency Status,Primary Learning Reason or Goal for Attending,Secondary Learning Reason or Goal for Attending,Post Secondary Program Enrollment Type,Educator Permissions
+    header = ["First Name","Last Name","User Name","Password","Role","Status","Grade","SIS ID","Email Address","Gender","Date of Birth"]
+
+    print("Generating Edmentum...")
+
+    students = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
+
+    # Modify dictionary with new keys:
+    for s in students:
+        s["First Name"] = s.pop("NameFirst")
+        s["Last Name"] = s.pop("NameLast")
+        s["User Name"] = s.pop("SchoolUsername")
+        s["Password"] = s.pop("SchoolEmailPassword")
+        s["Role"] = "learner"
+        s["Status"] = "InActive"
+        s["Grade"] = s.pop("GradeLevel")
+        s["SIS ID"] = s.pop("TABEID")
+        s["Email Address"] = s.pop("SchoolEmail")
+        s["Gender"] = s.pop("Gender")
+        s["Date of Birth"] = s.pop("Birthday")
+
+    # c.print(students)
+
+    for student in students:
+        print(f"Generating row for student: {student['Last Name']}, {student['First Name']}")
+        filename = "edmentum.csv"
+        file_path = os.path.join(outputfolder, filename)
+
+        print("Creating file in output folder...")
+        stu_csv_creator_dict(file_path, header, students)
 
 
 def main():
@@ -409,6 +387,7 @@ def main():
     print("7. Create Mangahigh import file.")
     print("8. Create Mathspace import files.")
     print("9. Create GoGuardian PLT import files.")
+    print("10. Create Edmentum import files.")
     print("0. Exit.")
     print("====================")
     print("\n")
@@ -467,6 +446,9 @@ def main():
         main()
     elif choice == "9":
         importGoGuardianPLT()
+        main()
+    elif choice == "10":
+        import_edmentum()
         main()
     else:
         print("Oops, please try again!")
