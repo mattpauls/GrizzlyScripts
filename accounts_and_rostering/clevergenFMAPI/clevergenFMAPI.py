@@ -1,12 +1,18 @@
 __author__ = 'mattpauls'
 
+import sys
 import os
 import csv
-import fmrest
 import re
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
+
+# Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
+FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
+sys.path.append(os.path.dirname(FM_DIR))
+
+from filemaker_api.filemaker_api import filemaker_get_records
 
 c = Console()
 
@@ -22,191 +28,111 @@ sectionsFile = os.getenv("SECTIONS_SOURCE")
 enrollmentsFile = os.getenv("ENROLLMENTS_SOURCE")
 
 
-def filemakerGetActive() -> dict:
-    """
-    Returns a dictionary of cadets in FileMaker.
-    """
+def stu_csv_creator_dict(file_path, header, d):
+    with open(file_path, "w") as f:
+        writer = csv.DictWriter(f, fieldnames=header, extrasaction="ignore")
+        writer.writeheader()
 
-    fms = fmrest.Server(os.getenv("FMS_URL"), 
-        user=os.getenv("FMS_USERNAME"), 
-        password=os.getenv("FMS_PASSWORD"), 
-        database=os.getenv("FMS_DATABASE"), 
-        layout=os.getenv("FMS_LAYOUT"),
-        api_version="vLatest")
-
-    fms.login()
-
-    find_query = [{'StatusActive': 'Yes'}]
-    foundset = fms.find(find_query, limit=os.getenv("FMS_LIMIT"))
-
-    activecadets = []
-
-    for record in foundset:
-        cadet = {
-        "NameLast": "",
-        "NameFirst": "",
-        "TABEID": "",
-        "Group": "",
-        "Platoon": ""
-        }
-
-        cadet["NameLast"] = record.NameLast
-        cadet["NameFirst"] = record.NameFirst
-        cadet["TABEID"] = record.TABEID
-        cadet["Group"] = record.Group
-        cadet["Platoon"] = record.Platoon
-        cadet["SchoolUsername"] = record.SchoolUsername
-        cadet["SchoolEmail"] = record.SchoolEmail
-        cadet["SchoolEmailPassword"] = record.SchoolEmailPassword
-        cadet["GradeLevel"] = record.GradeLevel
-        cadet["ELClassification"] = record.ELClassification
-        cadet["Gender"] = record.Gender
-        cadet["Birthday"] = record.Birthday
-        cadet["SpecialEducationIEP"] = record.SpecialEducationIEP
-
-        activecadets.append(cadet)
-
-    fms.logout()
-
-    c.print(f"Number of students found: {len(activecadets)}") # number in found set
-
-    return activecadets
-
-
-# Define CSV Reader for Filemaker raw export. Filemaker does not export headers with the CSV, so don't skip the first line.
-def filemakerexportstucsvreader(filepath):
-    stucsv = open(filepath, 'rU')
-    csv_stucsv = csv.reader(stucsv)
-    return csv_stucsv
-# End CSV Reader definition
-
-
-# Define CSV Reader
-def stucsvreader(filepath):
-    stucsv = open(filepath, 'rU')
-    csv_stucsv = csv.reader(stucsv)
-    next(csv_stucsv)
-    return csv_stucsv
-# End CSV Reader definition
-
-
-def stucsvcreator(csvfilename, headers):
-    csvfile = outputfolder + os.path.sep + csvfilename
-    stucsv_out = open(csvfile, "w")
-    stucsv_out.write(headers)
-    stucsv_out.close()
-
-
-def stucsvwriter(csvfilename, row):
-    csvfile = outputfolder + os.path.sep + csvfilename
-    stucsv_out = open(csvfile, "a")
-    stucsv_out.write(row)
-    stucsv_out.close()
-
-
-def stucsvwriter2(csvfilename, row):
-    csvfile = outputfolder + os.path.sep + csvfilename
-    w = csv.writer(open(csvfile,"a"))
-    w.writerow(row)
-
-
-def printvalues():
-    print("What is in Filemaker?")
-    activecadets = filemakerGetActive()
-    for cadet in activecadets:
-        print(cadet["NameLast"])
-    return
+        for row in d:
+            writer.writerow(row)
 
 
 #Username Generator
-def studentsgen():
+def studentsgen() -> None:
     """
-    Generates students.csv.
+    Generates a file students.csv in the output folder, properly formatted for importing to Clever.
     """
     filename = "students.csv"
-    header = "School_id,Student_id,Student_number,Last_name,First_name,Grade,Gender,DOB,IEP_status,Student_email\r\n"
-    print("Creating file in output folder...")
-    stucsvcreator(filename, header)
+    header = ["School_id","Student_id","Student_number","Last_name","First_name","Grade","Gender","DOB","IEP_status","Student_email"]
+    file_path = os.path.join(outputfolder, filename)
 
-    print("Generating students.csv...")
-    for student in filemakerGetActive():
-        print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
+    students = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
 
-        #Set row to NULL, just in case something goes wrong:
-        row = None
+    # Modify dictionary with new keys
+    for s in students:
+        c.print(f"Configuring row for {s['NameLast']}, {s['NameFirst']}")
+        s["School_id"] = 6
+        s["Student_id"] = s["TABEID"]
+        s["Student_number"] = s.pop("TABEID")
+        s["Last_name"] = s.pop("NameLast")
+        s["First_name"] = s.pop("NameFirst")
+        s["Grade"] = s.pop("GradeLevel")
+        s["DOB"] = s.pop("Birthday")
+        s["Student_email"] = s.pop("SchoolEmail")
 
-        School_id = "6"
-        Student_id = str(student["TABEID"])
-        Student_number = str(student["TABEID"])
-        Last_name = student["NameLast"]
-        First_name = student["NameFirst"]
-        Grade = str(student["GradeLevel"])
-        Gender = student["Gender"]
-        DOB = student["Birthday"]
-        if student["SpecialEducationIEP"] == "yes":
-            IEP_status = "Y"
+        if s["SpecialEducationIEP"] in ["Yes", "yes"]:
+            s["IEP_status"] = "Y"
         else:
-            IEP_status = "N"
-        Student_email = student["SchoolEmail"]
+            s["IEP_status"] = "N"
 
-        row = School_id + "," + Student_id + "," + Student_number + "," + Last_name + "," + First_name + "," + Grade + "," + Gender + "," + DOB + "," + IEP_status + "," + Student_email + "\r\n"
-        stucsvwriter(filename, row)
+    c.print("\n")
+    c.print(f"Creating file {filename} in {outputfolder}")
+    stu_csv_creator_dict(file_path, header, students)
 
 
-def enrollmentsgen():
+def add_enrollment(e: list, period, stu_id, course) -> list:
+    d = {}
+
+    d["School_id"] = 6
+    d["Period"] = period
+    d["Student_id"] = stu_id
+    d["Section_id"] = course
+
+    e.append(d)
+
+    return e
+
+def enrollmentsgen() -> None:
     """
-    Generates enrollments.csv.
+    Generates a file enrollments.csv in the output folder, properly formatted for importing to Clever.
     """
+
+    # Set up enrollments.csv file
+    filename = "enrollments.csv"
+    file_path = os.path.join(outputfolder, filename)
+    header = ["School_id", "Student_id", "Section_id"]
+
+    # Load sections file into memory for processing
     reader = csv.DictReader(open(sectionsFile))
-    sections = list(reader) # Convert read CSV to a list of dictionaries to use later.
+    # Convert read CSV to a list of dictionaries.
+    sections = list(reader)
+
     enrollments = []
 
-    with open(enrollmentsFile, 'w') as csvfile:
-        fieldnames = ["School_id","Section_id","Student_id"]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    # Load contract class list into memory for processing, if it exists
+    with open(contractClassList) as contract_class_reader:
+        reader = csv.DictReader(contract_class_reader)
+        contract_class_list = list(reader)
 
-        writer.writeheader()
+    # Get current students from FileMaker
+    students = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
 
-        students = filemakerGetActive() # get current students from FileMaker
+    # set up enrollments_list
+    e = []
 
-        for student in students:
-            print("Working on student: " + student["NameLast"])
-            # Initialize a student dictionary object for temporary use
-            stuDict = {"TABEID": student["TABEID"], "NameLast": student["NameLast"], "Group": student["Group"], "Sections": {}}
-            # Open up the Contract Class CSV
-            # TODO skip contract class if not configured in .env
-            try:
-                contractClassReader = csv.DictReader(open(contractClassList))
+    for s in students:
+        # Loop over our list of contract classes, and add any that we found that match student TABEIDs
+        for contract_class in contract_class_list:
+            if (int(s["TABEID"]) == int(contract_class["TABEID"])):
+                c.print(f"Adding student {s['NameLast']}, {s['NameFirst']} with TABEID {s['TABEID']} to contract course {contract_class['Section_id']}")
+                e = add_enrollment(e, contract_class["Period"], s["TABEID"], contract_class["Section_id"])
 
-                # Contract classes during periods 1-6 take precedence over "regular" classes, so write those into the student dictionary first
-                for contractClass in contractClassReader:
-                    if (int(student["TABEID"]) == int(contractClass["TABEID"])): # If the student shows up in the contract class list, just add them.
-                        stuDict["Sections"][contractClass["Period"]] = contractClass["Section_id"]
-            except:
-                print("Issue with the contract class reader or data")
+        # Loop over the sections that we loaded from the sections.csv file, and add any that we found that match student TABEIDs
+        for section in sections:
+            # Grab the first two characters from the section name (formatted like D5English)
+            sectionAndPeriod = re.search("(?<=C\d\dS\d)[A-J][1-9]", section["Section_id"])
 
-            # Loop over the sections that we loaded from the sections.csv file
-            for section in sections:
-                # Grab the first two characters from the section name (formatted like D5English)
-                sectionAndPeriod = re.search("(?<=C\d\dS\d)[A-J][1-9]", section["Section_id"])
+            # If Section_id is formatted as A1, B3, etc (not Contract1) AND If student group matches this section's group
+            if (sectionAndPeriod) and (s["Group"] == section["Section_id"][5:6]):
+                # This adds the remainder of the classes the student is enrolled in with their school group to the sections they're enrolled in
+                # with the exception of the periods they're already enrolled in a contract class
+                if not any(int(d["Student_id"]) == int(s["TABEID"]) and int(d["Period"]) == int(section["Period"]) for d in e):
+                    c.print(f"Adding student {s['NameLast']}, {s['NameFirst']} with TABEID {s['TABEID']} to course {section['Section_id']}")
+                    e = add_enrollment(e, section["Period"], s["TABEID"], section["Section_id"])
 
-                if (sectionAndPeriod) and (student["Group"] == section["Section_id"][5:6]): # If Section_id is formatted as A1, B3, etc (not Contract1) AND If student group matches this section's group
-                    if section["Period"] not in stuDict["Sections"]:
-                        # This adds the remainder of the classes the student is enrolled in with their school group to the sections they're enrolled in
-                        # with the exception of the periods they're already enrolled in a contract class
-                        stuDict["Sections"][section["Period"]] = section["Section_id"]
-            # Append the temporary student dictionary to the enrollments list
-            enrollments.append(stuDict)
-        # print(enrollments)
-
-        # Once all the students have been added to the enrollments list, loop over it
-        for enrollment in enrollments:
-            print(enrollment)
-            # For each element in the "Sections" key for each student in the list, write a row to the students.csv file with the school id, student section id, and student id
-            for stuSection in enrollment["Sections"]:
-                print("Adding Cadet %s in Group %s to Section %s" % (enrollment["NameLast"],enrollment["Group"],enrollment["Sections"][stuSection]))
-                writer.writerow({"School_id": 6, "Section_id": enrollment["Sections"][stuSection], "Student_id": enrollment["TABEID"]})
-
+    c.print("\n")
+    c.print(f"Creating file {filename} in {outputfolder}")
+    stu_csv_creator_dict(file_path, header, e)
 
 def main():
     while(True):

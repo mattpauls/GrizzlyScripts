@@ -59,7 +59,8 @@ def filemaker_get_records(auth: bool = False, fields: list = None, limit: int = 
             "GradeLevel",
             "Gender",
             "Birthday",
-            "ISPNextCycle"
+            "ISPNextCycle",
+            "SpecialEducationIEP"
         ]
 
         fms.login()

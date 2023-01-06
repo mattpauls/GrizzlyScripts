@@ -367,13 +367,11 @@ def import_edmentum():
 
     # c.print(students)
 
-    for student in students:
-        print(f"Generating row for student: {student['Last Name']}, {student['First Name']}")
-        filename = "edmentum.csv"
-        file_path = os.path.join(outputfolder, filename)
+    filename = "edmentum.csv"
+    file_path = os.path.join(outputfolder, filename)
 
-        print("Creating file in output folder...")
-        stu_csv_creator_dict(file_path, header, students)
+    c.print(f"Creating file {filename} in {outputfolder}")
+    stu_csv_creator_dict(file_path, header, students)
 
 
 def main():
