@@ -1,60 +1,17 @@
-import fmrest
 import subprocess
 import time
 import os
-from dotenv import load_dotenv
+import sys
 
-load_dotenv()
+# Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
+FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
+sys.path.append(os.path.dirname(FM_DIR))
 
-def filemakerGetActive():
-    """
-    Returns a dictionary of cadets in FileMaker.
-    """
+from filemaker_api.filemaker_api import filemaker_get_records
 
-    fms = fmrest.Server(os.getenv("FMS_URL"), 
-    user=os.getenv("FMS_USERNAME"), 
-    password=os.getenv("FMS_PASSWORD"), 
-    database=os.getenv("FMS_DATABASE"), 
-    layout=os.getenv("FMS_LAYOUT"))
-
-    fms.login()
-
-    find_query = [{'StatusActive': 'Yes'}]
-    foundset = fms.find(find_query, limit=500)
-
-    global activecadets # oooh why did I use global!?
-    activecadets = []
-
-    for record in foundset:
-        cadet = {
-        "NameLast": "",
-        "NameFirst": "",
-        "TABEID": "",
-        "Group": "",
-        "Platoon": ""
-        }
-        
-        cadet["NameLast"] = record.NameLast
-        cadet["NameFirst"] = record.NameFirst
-        cadet["TABEID"] = record.TABEID
-        cadet["Group"] = record.Group
-        cadet["Platoon"] = record.Platoon
-        cadet["SchoolUsername"] = record.SchoolUsername
-        cadet["SchoolEmail"] = record.SchoolEmail
-        cadet["SchoolEmailPassword"] = record.SchoolEmailPassword
-        cadet["GradeLevel"] = record.GradeLevel
-        cadet["ELClassification"] = record.ELClassification
-
-        activecadets.append(cadet)
-
-    fms.logout()
-
-    print("%s students found." % len(activecadets)) # number in found set
-
-    return activecadets
 
 def addToGroup(cadetEmail, groupEmail):
-    print(cadetEmail, groupEmail)
+    print(f"Adding { cadetEmail } to { groupEmail }")
 
     # capture_output = True
     process = subprocess.run(
@@ -66,13 +23,15 @@ def addToGroup(cadetEmail, groupEmail):
 
     return
 
-def updateGroups(activecadets):
-#     gam update group <group email> add owner|member|manager [allmail|nomail|daily|digest] [notsuspended]
-#   {user <email address> | group <group address> | ou|ou_and_children <org name> | file <file name> | all users}
 
-    for cadet in activecadets:
-        addToGroup(cadet['SchoolEmail'], str(cadet['Platoon'])[:1] + '-platoon@mygya.com')
-        if cadet['Group']:
-            addToGroup(cadet['SchoolEmail'], cadet['Group'][:1].lower() + '-group@mygya.com')
+def updateGroups():
+    students = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
 
-updateGroups(filemakerGetActive())
+    for s in students:
+        addToGroup(s['SchoolEmail'], str(s['Platoon'])[:1] + '-platoon@mygya.com')
+        if s['Group']:
+            addToGroup(s['SchoolEmail'], s['Group'][:1].lower() + '-group@mygya.com')
+
+
+if __name__ == "__main__":
+    updateGroups()
