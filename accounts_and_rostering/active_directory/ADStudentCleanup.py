@@ -135,12 +135,14 @@ def find_student_in_ad(ad, student, ad_students):
 
 
 def processStudents():
+    c.print("Processing students...")
     students = filemaker_get_records()
     ad = bindAD()
 
     ad_students = searchAD(ad)
 
     school_year_end = os.getenv("SCHOOL_YEAR_END")
+    c.print(f"school year end is {school_year_end}")
 
     for student in students:
         # print("student is: ", student)
@@ -158,33 +160,33 @@ def processStudents():
 
             stu_status = student["StatusActive"]
 
-            if stu_status == "ind st drop" or stu_status in {"no", "No"}:
+            if stu_status == "ind st drop" or stu_status in ["no", "No"]:
                 # TODO Allow to change password
                 # Check if currently in alumni OU
                 if "alumni" not in ad_students[fm_username]["dn"]:
                     # move to alumni OU
-                    print(f"{fm_username} is dropped and needs to move to alumni.")
+                    c.print(f"{fm_username} is dropped and needs to move to alumni.")
                     moveUser(ad, ad_students[fm_username], "alumni")
                 # TODO Check if student_status == "no" and if not disabled in AD, disable in AD
                 # TODO remove from students group
 
             # If it's the end of school, and student is in isp or currently active (or inactive), move them to the alumni OU
             # The only exception is if a student is going to be attending ISP next cycle. In that case, move them to the ISP OU
-            if school_year_end == "1" and stu_status in {"isp", "yes", "Yes", "no", "No"}:
-                if stu_status in {"yes", "Yes"} and student["ISPNextCycle"] in {"yes", "Yes"}:
-                    print(f"{fm_username} is in ISP next cycle and needs to be moved to the ISP OU.")
+            if school_year_end == "1" and stu_status in ["isp", "yes", "Yes", "no", "No"]:
+                if stu_status in ["yes", "Yes"] and student["ISPNextCycle"] in ["yes", "Yes"]:
+                    c.print(f"{fm_username} is in ISP next cycle and needs to be moved to the ISP OU.")
                     moveUser(ad, ad_students[fm_username], "isp")
                 else:
-                    print(f"{fm_username} needs to move to alumi OU.")
+                    c.print(f"{fm_username} needs to move to alumi OU.")
                     moveUser(ad, ad_students[fm_username], "alumni")
 
             # If it's still school, process students as needed.
             if school_year_end == "0":
-                if stu_status in {"yes", "Yes"} and "students" not in ad_students[fm_username]["dn"]:
-                    print(f"{fm_username} is an active student and should be in the students OU.")
+                if stu_status in ["yes", "Yes"] and "students" not in ad_students[fm_username]["dn"]:
+                    c.print(f"{fm_username} is an active student and should be in the students OU.")
                     moveUser(ad, ad_students[fm_username], "students")
-                elif stu_status in {"isp"} and "isp" not in ad_students[fm_username]["dn"]:
-                    print(f"{fm_username} is an active ISP student and should be in the isp OU.")
+                elif stu_status in ["isp"] and "isp" not in ad_students[fm_username]["dn"]:
+                    c.print(f"{fm_username} is an active ISP student and should be in the isp OU.")
                     moveUser(ad, ad_students[fm_username], "isp")
 
     ad.unbind_s()
