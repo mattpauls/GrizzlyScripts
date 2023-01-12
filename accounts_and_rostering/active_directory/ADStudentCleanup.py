@@ -4,6 +4,8 @@ import ldap
 from dotenv import load_dotenv
 from rich.console import Console
 
+load_dotenv()
+
 # Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out without moving my files around in the directory.
 FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
 sys.path.append(os.path.dirname(FM_DIR))
@@ -12,7 +14,6 @@ from filemaker_api.filemaker_api import filemaker_get_records
 
 c = Console()
 
-load_dotenv()
 
 def bindAD():
     """"
@@ -137,12 +138,12 @@ def find_student_in_ad(ad, student, ad_students):
 def processStudents():
     c.print("Processing students...")
     students = filemaker_get_records()
+
     ad = bindAD()
 
     ad_students = searchAD(ad)
 
     school_year_end = os.getenv("SCHOOL_YEAR_END")
-    c.print(f"school year end is {school_year_end}")
 
     for student in students:
         # print("student is: ", student)
