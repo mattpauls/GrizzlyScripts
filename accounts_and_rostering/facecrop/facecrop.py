@@ -20,6 +20,7 @@ print("cascPath is: " + cascPath)
 faceCascade = cv2.CascadeClassifier(cascPath)
 
 files = glob.glob("*.JPG") # This is case sensitive, change to .jpg or .JPG if nothing is happening.
+files = files + glob.glob("*.jpg")
 print(files)
 for file in files:
 
