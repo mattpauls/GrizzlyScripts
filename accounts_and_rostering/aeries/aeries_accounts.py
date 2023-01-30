@@ -1,8 +1,9 @@
 import sys
 import os
-from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
+import yagmail
+import time
 
 # Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
 FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
@@ -12,33 +13,49 @@ from filemaker_api.filemaker_api import filemaker_get_records
 
 c = Console()
 
-load_dotenv()
 
-search_fields = ["NameLast", "NameFirst", "SchoolEmail", "SchoolEmailPassword", "AeriesVPC", "AeriesStuID", "HomePhone(?)"]
+def generate_body(NameLast, SchoolEmail, SchoolEmailPassword, AeriesVPCCode, AeriesID, Guardian1PhoneHome):
+    return (
+        f"<p>Cadet {NameLast},</p>"
+        "<p>You can now check your grades online! <a href=""https://drive.google.com/file/d/1Ax2pZyh0-zxkxqM54rIsl9zzQjHZ0zZc/view"">Click here</a> for instructions on how to setup your Aeries account to check your grades. Use the information below to setup your account, but <b>please wait until you are directed by your teacher in Life Skills</b> to follow these directions.</p>"
+        "<p>Use this email and password:\n"
+        f"email: {SchoolEmail}\n"
+        f"password: {SchoolEmailPassword}</p>"
+        "<p>Copy/Paste the following into the Student Verification fields when needed:\n"
+        f"Student Permanent ID Number: {AeriesID}\n"
+        f"Student Home Telephone Number: {Guardian1PhoneHome}\n"
+        f"Verification Code: {AeriesVPCCode}</p>"
+        "<p>Mr. Pauls & Ms. Mauch</p>"
+        )
 
-"""
-Email template
-To: <<email>>
-Reply-to: 
-Subject: Aeries Setup Instructions - How to check your grades
-Body: 
-"Cadet <<last>>,
 
-You can now check your grades online! <a href=""https://drive.google.com/file/d/1Ax2pZyh0-zxkxqM54rIsl9zzQjHZ0zZc/view"">Click here</a> for instructions on how to setup your Aeries account to check your grades. Use the information below to setup your account, but <b>please wait until you are directed by your teacher in Life Skills</b> to follow these directions.
+def send_emails():
+    # Get specified fields from Filemaker
+    search_fields = ["NameLast", "NameFirst", "SchoolEmail", "SchoolEmailPassword", "AeriesVPCCode", "AeriesID", "Guardian1PhoneHome"]
+    students = filemaker_get_records(query=[{'StatusActive': 'Yes'}], fields=search_fields)
 
-Use this email and password:
-email: <<email>>
-password: <<password>>
+    with yagmail.SMTP("noreply@mygya.com") as yag:
+        for s in students:
+            c.print(f"Sending email for {s['SchoolEmail']}")
 
-Copy/Paste the following into the Student Verification fields when needed:
-Student Permanent ID Number: <<stuID>>
-Student Home Telephone Number: <<phone>>
-Verification Code: <<vpc>>
+            contents = generate_body(
+                s["NameLast"],
+                s["SchoolEmail"],
+                s["SchoolEmailPassword"],
+                s["AeriesVPCCode"],
+                s["AeriesID"],
+                s["Guardian1PhoneHome"]
+            )
+            c.print(contents)
 
-Mr. Pauls & Ms. Mauch"
+            yag.send(
+                to=s["SchoolEmail"],
+                subject="Aeries Setup Instructions - How to check your grades",
+                contents=contents
+            )
 
-"""
-
+            # Just to be safe, wait a second between executions
+            time.sleep(1)
 
 
 def main():
@@ -51,7 +68,7 @@ def main():
         option = Prompt.ask("Enter your choice:", choices=["1", "2"])
 
         if option == "1":
-            print("option 1")
+            send_emails()
         elif option == "2":
             exit()
 
