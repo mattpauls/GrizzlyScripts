@@ -55,7 +55,7 @@ def send_emails():
             )
 
             # Just to be safe, wait a second between executions
-            time.sleep(1)
+            time.sleep(1.5)
 
 
 def main():
