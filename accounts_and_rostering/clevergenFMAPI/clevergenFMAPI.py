@@ -4,6 +4,7 @@ import sys
 import os
 import csv
 import re
+from fabric import Connection
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
@@ -134,6 +135,20 @@ def enrollmentsgen() -> None:
     c.print(f"Creating file {filename} in {outputfolder}")
     stu_csv_creator_dict(file_path, header, e)
 
+
+def upload_clever():
+    c.print("Uploading to Clever...")
+    clever_sftp_url = os.getenv("CLEVER_SFTP_URL")
+    clever_sftp_username = os.getenv("CLEVER_SFTP_USERNAME")
+    clever_sftp_password = os.getenv("CLEVER_SFTP_PASSWORD")
+
+    c = Connection(clever_sftp_url, clever_sftp_username, connect_kwargs={"password": clever_sftp_password})
+    #TODO pass file paths and upload
+    #TODO move generated files to the correct storage location (rather than just Downloads) and rename previous file as a backup
+    c.put('filepathhere')
+
+
+
 def main():
     while(True):
         c.print("\n")
@@ -149,6 +164,8 @@ def main():
         elif option == "2":
             enrollmentsgen()
         elif option == "3":
+            upload_clever()
+        elif option == "4":
             exit()
 
 if __name__ == "__main__":
