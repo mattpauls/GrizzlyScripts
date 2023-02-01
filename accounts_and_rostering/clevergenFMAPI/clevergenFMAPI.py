@@ -142,10 +142,10 @@ def upload_clever():
     clever_sftp_username = os.getenv("CLEVER_SFTP_USERNAME")
     clever_sftp_password = os.getenv("CLEVER_SFTP_PASSWORD")
 
-    c = Connection(clever_sftp_url, clever_sftp_username, connect_kwargs={"password": clever_sftp_password})
+    cftp = Connection(clever_sftp_url, clever_sftp_username, connect_kwargs={"password": clever_sftp_password})
     #TODO pass file paths and upload
     #TODO move generated files to the correct storage location (rather than just Downloads) and rename previous file as a backup
-    c.put('filepathhere')
+    cftp.put('filepathhere')
 
 
 
@@ -155,9 +155,10 @@ def main():
         c.rule(title="Clever File Generation")
         c.print("1: Generate student file")
         c.print("2: Generate enrollments file")
-        c.print("3: Exit")
+        c.print("3: Upload generated files to Clever")
+        c.print("4: Exit")
 
-        option = Prompt.ask("Enter your choice:", choices=["1", "2", "3"])
+        option = Prompt.ask("Enter your choice:", choices=["1", "2", "3", "4"])
 
         if option == "1":
             studentsgen()
