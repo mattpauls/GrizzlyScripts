@@ -4,6 +4,8 @@ import sys
 import os
 import csv
 import re
+from pathlib import Path
+import time
 from fabric import Connection
 from dotenv import load_dotenv
 from rich.console import Console
@@ -21,7 +23,7 @@ load_dotenv()
 
 # Set variables
 classNo = str(os.getenv("CLASS_NUMBER"))
-outputfolder = os.getenv("DOWNLOADS_FOLDER")
+outputfolder = os.getenv("OUTPUT_FOLDER")
 print("Output folder is:", outputfolder)
 
 contractClassList = os.getenv("CONTRACT_CLASS_SOURCE")
@@ -46,6 +48,8 @@ def studentsgen() -> None:
     filename = "students.csv"
     header = ["School_id","Student_id","Student_number","Last_name","First_name","Grade","Gender","DOB","IEP_status","Student_email"]
     file_path = os.path.join(outputfolder, filename)
+    # Create a backup of the original file, if it exists
+    backup_file(file_path)
 
     students = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
 
@@ -91,6 +95,9 @@ def enrollmentsgen() -> None:
     # Set up enrollments.csv file
     filename = "enrollments.csv"
     file_path = os.path.join(outputfolder, filename)
+    # Create a backup of the original file, if it exists
+    backup_file(file_path)
+
     header = ["School_id", "Student_id", "Section_id"]
 
     # Load sections file into memory for processing
@@ -134,6 +141,16 @@ def enrollmentsgen() -> None:
     c.print("\n")
     c.print(f"Creating file {filename} in {outputfolder}")
     stu_csv_creator_dict(file_path, header, e)
+
+def backup_file(filename: str) -> None:
+    """
+    Renames file and leaves in place as a backup.
+    """
+    filename = Path(filename)
+    new_filename = filename.with_stem(filename.stem+time.strftime("%Y%m%d-%H%M%S"))
+    if filename.exists() and not new_filename.exists():
+        c.print(f"Renaming {filename} to {new_filename}")
+        os.rename(filename, new_filename)
 
 
 def upload_clever():
