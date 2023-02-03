@@ -14,7 +14,7 @@ from filemaker_api.filemaker_api import filemaker_get_records
 c = Console()
 
 
-def generate_body(NameLast, SchoolEmail, SchoolEmailPassword, AeriesVPCCode, AeriesID, Guardian1PhoneHome):
+def generate_body(NameLast, SchoolEmail, SchoolEmailPassword, AeriesVPCCode, AeriesID, Guardian1PhoneHome) -> str:
     return (
         f"<p>Cadet {NameLast},</p>"
         "<p>You can now check your grades online! <a href=""https://drive.google.com/file/d/1Ax2pZyh0-zxkxqM54rIsl9zzQjHZ0zZc/view"">Click here</a> for instructions on how to setup your Aeries account to check your grades. Use the information below to setup your account, but <b>please wait until you are directed by your teacher in Life Skills</b> to follow these directions.</p>"
@@ -29,8 +29,12 @@ def generate_body(NameLast, SchoolEmail, SchoolEmailPassword, AeriesVPCCode, Aer
         )
 
 
-def send_emails():
-    # Get specified fields from Filemaker
+def send_emails() -> None:
+    """
+    Gets specified fields from FileMaker for each student record.
+    Sends an email to address contained in the SchoolEmail field for each student record found, formatted with generate_body().
+    """
+
     search_fields = ["NameLast", "NameFirst", "SchoolEmail", "SchoolEmailPassword", "AeriesVPCCode", "AeriesID", "Guardian1PhoneHome"]
     students = filemaker_get_records(query=[{'StatusActive': 'Yes'}], fields=search_fields)
 
@@ -46,7 +50,6 @@ def send_emails():
                 s["AeriesID"],
                 s["Guardian1PhoneHome"]
             )
-            c.print(contents)
 
             yag.send(
                 to=s["SchoolEmail"],
