@@ -4,6 +4,9 @@ import sys
 import os
 import csv
 import re
+from pathlib import Path
+import time
+from fabric import Connection
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
@@ -20,12 +23,11 @@ load_dotenv()
 
 # Set variables
 classNo = str(os.getenv("CLASS_NUMBER"))
-outputfolder = os.getenv("DOWNLOADS_FOLDER")
+outputfolder = os.getenv("OUTPUT_FOLDER")
 print("Output folder is:", outputfolder)
 
 contractClassList = os.getenv("CONTRACT_CLASS_SOURCE")
 sectionsFile = os.getenv("SECTIONS_SOURCE")
-enrollmentsFile = os.getenv("ENROLLMENTS_SOURCE")
 
 
 def stu_csv_creator_dict(file_path, header, d):
@@ -45,6 +47,8 @@ def studentsgen() -> None:
     filename = "students.csv"
     header = ["School_id","Student_id","Student_number","Last_name","First_name","Grade","Gender","DOB","IEP_status","Student_email"]
     file_path = os.path.join(outputfolder, filename)
+    # Create a backup of the original file, if it exists
+    backup_file(file_path)
 
     students = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
 
@@ -90,6 +94,9 @@ def enrollmentsgen() -> None:
     # Set up enrollments.csv file
     filename = "enrollments.csv"
     file_path = os.path.join(outputfolder, filename)
+    # Create a backup of the original file, if it exists
+    backup_file(file_path)
+
     header = ["School_id", "Student_id", "Section_id"]
 
     # Load sections file into memory for processing
@@ -134,21 +141,56 @@ def enrollmentsgen() -> None:
     c.print(f"Creating file {filename} in {outputfolder}")
     stu_csv_creator_dict(file_path, header, e)
 
+def backup_file(filename: str) -> None:
+    """
+    Renames file and leaves in place as a backup.
+    """
+    filename = Path(filename)
+    new_filename = filename.with_stem(filename.stem+time.strftime("%Y%m%d-%H%M%S"))
+    if filename.exists() and not new_filename.exists():
+        c.print(f"Renaming {filename} to {new_filename}")
+        os.rename(filename, new_filename)
+
+def check_paths_exist(file_list: list, parent_dir: str) -> bool:
+    """
+    Checks to see if a list of filenames exists in the parent directory. Raises an exception if not found, and returns True if found.
+    """
+    for f in file_list:
+        if not Path(parent_dir).joinpath(f).exists():
+            raise FileNotFoundError # I need to think this through a little more. Probably not the best way to handle this. If I were to make it truly modular, maybe let the calling function determine what to do with a False return?
+    return True
+
+def upload_clever() -> None:
+    c.print("Uploading to Clever...")
+    clever_sftp_url = os.getenv("CLEVER_SFTP_URL")
+    clever_sftp_username = os.getenv("CLEVER_SFTP_USERNAME")
+    clever_sftp_password = os.getenv("CLEVER_SFTP_PASSWORD")
+    files_to_upload = ["enrollments.csv", "students.csv"]
+
+    if check_paths_exist(files_to_upload, outputfolder):
+        cftp = Connection(clever_sftp_url, clever_sftp_username, connect_kwargs={"password": clever_sftp_password})
+        for f in files_to_upload:
+            c.print(f"Uploading: {Path(outputfolder).joinpath(f)}")
+            cftp.put(Path(outputfolder).joinpath(f))
+
 def main():
     while(True):
         c.print("\n")
         c.rule(title="Clever File Generation")
         c.print("1: Generate student file")
         c.print("2: Generate enrollments file")
-        c.print("3: Exit")
+        c.print("3: Upload generated files to Clever")
+        c.print("4: Exit")
 
-        option = Prompt.ask("Enter your choice:", choices=["1", "2", "3"])
+        option = Prompt.ask("Enter your choice:", choices=["1", "2", "3", "4"])
 
         if option == "1":
             studentsgen()
         elif option == "2":
             enrollmentsgen()
         elif option == "3":
+            upload_clever()
+        elif option == "4":
             exit()
 
 if __name__ == "__main__":
