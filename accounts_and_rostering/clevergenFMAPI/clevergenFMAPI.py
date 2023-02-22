@@ -28,7 +28,6 @@ print("Output folder is:", outputfolder)
 
 contractClassList = os.getenv("CONTRACT_CLASS_SOURCE")
 sectionsFile = os.getenv("SECTIONS_SOURCE")
-enrollmentsFile = os.getenv("ENROLLMENTS_SOURCE")
 
 
 def stu_csv_creator_dict(file_path, header, d):
@@ -152,19 +151,27 @@ def backup_file(filename: str) -> None:
         c.print(f"Renaming {filename} to {new_filename}")
         os.rename(filename, new_filename)
 
+def check_paths_exist(file_list: list, parent_dir: str) -> bool:
+    """
+    Checks to see if a list of filenames exists in the parent directory. Raises an exception if not found, and returns True if found.
+    """
+    for f in file_list:
+        if not Path(parent_dir).joinpath(f).exists():
+            raise FileNotFoundError # I need to think this through a little more. Probably not the best way to handle this. If I were to make it truly modular, maybe let the calling function determine what to do with a False return?
+    return True
 
-def upload_clever():
+def upload_clever() -> None:
     c.print("Uploading to Clever...")
     clever_sftp_url = os.getenv("CLEVER_SFTP_URL")
     clever_sftp_username = os.getenv("CLEVER_SFTP_USERNAME")
     clever_sftp_password = os.getenv("CLEVER_SFTP_PASSWORD")
+    files_to_upload = ["enrollments.csv", "students.csv"]
 
-    cftp = Connection(clever_sftp_url, clever_sftp_username, connect_kwargs={"password": clever_sftp_password})
-    #TODO pass file paths and upload
-    #TODO move generated files to the correct storage location (rather than just Downloads) and rename previous file as a backup
-    cftp.put('filepathhere')
-
-
+    if check_paths_exist(files_to_upload, outputfolder):
+        cftp = Connection(clever_sftp_url, clever_sftp_username, connect_kwargs={"password": clever_sftp_password})
+        for f in files_to_upload:
+            c.print(f"Uploading: {Path(outputfolder).joinpath(f)}")
+            cftp.put(Path(outputfolder).joinpath(f))
 
 def main():
     while(True):
