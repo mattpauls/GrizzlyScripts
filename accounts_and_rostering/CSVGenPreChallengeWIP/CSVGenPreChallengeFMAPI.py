@@ -1,20 +1,22 @@
 __author__ = 'mattpauls'
 
-#from tkFileDialog import askdirectory
-#import Tkinter, tkFileDialog
+# from tkFileDialog import askdirectory
+# import Tkinter, tkFileDialog
 import sys
 # sys.path.append('/usr/local/lib/python3.9/site-packages') # was python3.7
 import os
 import csv
 import random
 from unidecode import unidecode
-#from mailmerge import MailMerge
+# from mailmerge import MailMerge
 from pathlib import Path
 from dotenv import load_dotenv
 from rich.console import Console
+import requests
 
 # Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
-FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
+FM_DIR = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "filemaker_api")
 sys.path.append(os.path.dirname(FM_DIR))
 
 from filemaker_api.filemaker_api import filemaker_get_records
@@ -24,12 +26,14 @@ load_dotenv()
 c = Console()
 
 # Set variables
-classNo = str(os.getenv("CLASS_NUMBER")) # Update this to the current class number
+# Update this to the current class number
+classNo = str(os.getenv("CLASS_NUMBER"))
 outputfolder = os.getenv("DOWNLOADS_FOLDER")
 print("Output folder is: " + outputfolder)
 
 # Get the current working directory of this python script
-__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+__location__ = os.path.realpath(os.path.join(
+    os.getcwd(), os.path.dirname(__file__)))
 
 
 # Define CSV Reader for Filemaker raw export. Filemaker does not export headers with the CSV, so don't skip the first line.
@@ -40,6 +44,8 @@ def filemakerexportstucsvreader(filepath):
 # End CSV Reader definition
 
 # Define CSV Reader
+
+
 def stucsvreader(filepath):
     stucsv = open(filepath, 'rU')
     csv_stucsv = csv.reader(stucsv)
@@ -47,11 +53,13 @@ def stucsvreader(filepath):
     return csv_stucsv
 # End CSV Reader definition
 
+
 def stucsvcreator(csvfilename, headers):
     csvfile = outputfolder + os.path.sep + csvfilename
     stucsv_out = open(csvfile, "w")
     stucsv_out.write(headers)
     stucsv_out.close()
+
 
 def stu_csv_creator_dict(file_path, header, d):
     with open(file_path, "w") as f:
@@ -61,16 +69,19 @@ def stu_csv_creator_dict(file_path, header, d):
         for row in d:
             writer.writerow(row)
 
+
 def stucsvwriter(csvfilename, row):
     csvfile = outputfolder + os.path.sep + csvfilename
     stucsv_out = open(csvfile, "a")
     stucsv_out.write(row)
     stucsv_out.close()
 
+
 def stucsvwriter2(csvfilename, row):
     csvfile = outputfolder + os.path.sep + csvfilename
-    w = csv.writer(open(csvfile,"a"))
+    w = csv.writer(open(csvfile, "a"))
     w.writerow(row)
+
 
 def printvalues():
     print("What is in Filemaker?")
@@ -79,13 +90,15 @@ def printvalues():
         print(cadet["NameLast"])
     return
 
+
 def randNumber():
     """
     Returns a two-digit random integer that does not include gang-related or other inappropriate numbers.
     """
-    exclude = [13, 14, 23, 69] #exclude certain gang-related numbers etc
+    exclude = [13, 14, 23, 69]  # exclude certain gang-related numbers etc
     rand = random.randint(10, 99)
     return randNumber() if rand in exclude else rand
+
 
 def genpassword():
     """
@@ -97,9 +110,20 @@ def genpassword():
 
     return password
 
-#/Users/mattpauls/Desktop/CSVGen/CSVGen/output/
 
-#Username Generator
+def dinopass():
+    """
+    Returns a password from Dinopass' API that does not include gang-related or other inappropriate numbers.
+    """
+    dinopass_url = "https://www.dinopass.com/password/simple"
+    exclude = [13, 14, 23, 69]
+    password = requests.get(dinopass_url).text
+    return dinopass() if int(password[-2:]) in exclude else password
+
+
+# /Users/mattpauls/Desktop/CSVGen/CSVGen/output/
+
+# Username Generator
 def usernamegen():
     """
     Creates a usernames.csv file in the output folder that contains columns needed for importing usernames and passwords into FileMaker.
@@ -113,12 +137,13 @@ def usernamegen():
 
     print("Generating usernames and passwords...")
     for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
-        print("Generating username/password for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
+        print("Generating username/password for student: %s, %s" %
+              (student["NameLast"], student["NameFirst"]))
 
-        #Set row to NULL, just in case something goes wrong:
+        # Set row to NULL, just in case something goes wrong:
         row = None
 
-        #Add stuff in here to strip out Jr. and the ~ stuff
+        # Add stuff in here to strip out Jr. and the ~ stuff
         last = student["NameLast"].split(",")[0]
         lastMod = last.split("-")[0]
         # Split last name on spaces
@@ -139,19 +164,22 @@ def usernamegen():
         firstMod = firstMod.split(" ")[0]
         firstMod = unidecode(firstMod)
 
-        #Set username equal to the last and first name
+        # Set username equal to the last and first name
         username = lastMod.lower() + firstMod.lower()
 
-        #truncate to 20 characters for AD import
+        # truncate to 20 characters for AD import
         username = (username[:18]) if len(username) > 18 else username
         username = username + classNo
         email = username + "@mygya.com"
-        password = genpassword()
+        password = dinopass()
 
         print(username, password)
-        #create the row to write to the file
-        row = str(student["TABEID"]) + "," + last + "," + first + "," + email + "," + username + "," + password + "," + student["Group"] + "," + str(student["Platoon"]) + "\r\n"
+        # create the row to write to the file
+        row = str(student["TABEID"]) + "," + last + "," + first + "," + email + "," + username + \
+            "," + password + "," + student["Group"] + \
+            "," + str(student["Platoon"]) + "\r\n"
         stucsvwriter(filename, row)
+
 
 def moodleimportgen(inputcsv):
     filename = "moodle.csv"
@@ -164,10 +192,12 @@ def moodleimportgen(inputcsv):
     for studentid, last, first, email, username, password, grp, plt in stucsvreader(inputcsv):
 
         print(username)
-        row = studentid + "," + email + "," + last + "," + first + "," + email + "," + password + "\r\n"
+        row = studentid + "," + email + "," + last + "," + \
+            first + "," + email + "," + password + "\r\n"
         stucsvwriter(filename, row)
 
         userid += 1
+
 
 def pltEndGen(plt):
     if plt == "1":
@@ -182,6 +212,7 @@ def pltEndGen(plt):
         ending = "ERROR"
     return ending
 
+
 def createStudentHaparaList(inputcsv):
     filename = "haparaStudentsPlatoons.csv"
     header = "email,class\r\n"
@@ -190,8 +221,10 @@ def createStudentHaparaList(inputcsv):
 
     print("Generating file...")
     for studentid, last, first, email, username, password, grp, plt in filemakerexportstucsvreader(inputcsv):
-        row = username + "," + plt + pltEndGen(plt) + "-platoon-" + classNo + "\r\n"
+        row = username + "," + plt + \
+            pltEndGen(plt) + "-platoon-" + classNo + "\r\n"
         stucsvwriter(filename, row)
+
 
 def fmpimportgen(inputcsv):
     filename = "fmpimport.csv"
@@ -204,31 +237,35 @@ def fmpimportgen(inputcsv):
 
         print(username)
         classname = grp + "group"
-        row = studentid + "," + last + "," + first + "," + username + "," + email + "," + password + "\r\n"
+        row = studentid + "," + last + "," + first + "," + \
+            username + "," + email + "," + password + "\r\n"
         stucsvwriter(filename, row)
 
 
 def importAD():
-    #filename = "adimport.csv"
-    #header = "LastName,FirstName,AccountName,AccountPassword,Group,Platoon\r\n"
-    #print("Creating file in output folder...")
-    #stucsvcreator(filename, header)
+    # filename = "adimport.csv"
+    # header = "LastName,FirstName,AccountName,AccountPassword,Group,Platoon\r\n"
+    # print("Creating file in output folder...")
+    # stucsvcreator(filename, header)
 
-    #TODO: add TABEID to employeeID
+    # TODO: add TABEID to employeeID
     print("Generating file...")
 
-    header = ["NameLast", "NameFirst", "SchoolUsername", "SchoolEmailPassword", "Group", "Platoon", "TABEID"]
+    header = ["NameLast", "NameFirst", "SchoolUsername",
+              "SchoolEmailPassword", "Group", "Platoon", "TABEID"]
     with open(os.path.join(outputfolder, 'adimport.csv'), 'w') as output_file:
-        dict_writer = csv.DictWriter(output_file, header, extrasaction='ignore')
+        dict_writer = csv.DictWriter(
+            output_file, header, extrasaction='ignore')
         dict_writer.writeheader()
-        dict_writer.writerows(filemaker_get_records(query=[{'StatusActive': 'Yes'}]))
+        dict_writer.writerows(filemaker_get_records(
+            query=[{'StatusActive': 'Yes'}]))
+
 
 def importLexia():
-    #filename = "adimport.csv"
-    #header = "LastName,FirstName,AccountName,AccountPassword,Group,Platoon\r\n"
-    #print("Creating file in output folder...")
-    #stucsvcreator(filename, header)
-
+    # filename = "adimport.csv"
+    # header = "LastName,FirstName,AccountName,AccountPassword,Group,Platoon\r\n"
+    # print("Creating file in output folder...")
+    # stucsvcreator(filename, header)
 
     lexia = []
 
@@ -237,7 +274,8 @@ def importLexia():
             # if student.Group is A or H1 or if ELClassification is "L"
             print(student)
 
-            if student["Group"] in 'H1': # have to use 'in' for some reason. Not sure why.
+            # have to use 'in' for some reason. Not sure why.
+            if student["Group"] in 'H1':
                 lexiaClass = "H1 Group"
                 print("H1 Class: " + lexiaClass)
             elif student["Group"] == 'A':
@@ -250,14 +288,14 @@ def importLexia():
                 print("Something went wrong here.")
 
             lexiarow = {
-            "First Name": "",
-            "Last Name": "",
-            "Username": "",
-            "Password": "",
-            "Grade": "",
-            "Class": "",
-            "School": "",
-            "Student Number": ""
+                "First Name": "",
+                "Last Name": "",
+                "Username": "",
+                "Password": "",
+                "Grade": "",
+                "Class": "",
+                "School": "",
+                "Student Number": ""
             }
 
             lexiarow["First Name"] = student["NameFirst"]
@@ -271,17 +309,20 @@ def importLexia():
 
             lexia.append(lexiarow)
 
-    #TODO: add TABEID to employeeID
+    # TODO: add TABEID to employeeID
     print("Generating file...")
 
-    #header = ["NameLast", "NameFirst", "SchoolUsername", "SchoolEmailPassword", "Group", "Platoon", "TABEID"]
-    header = ["First Name", "Last Name", "Username", "Password", "Grade", "Class", "School", "Student Number"]
-    #fieldnames = ["NameFirst", "NameLast", "SchoolUsername", "SchoolEmailPassword", "GradeLevel", "Group", ]
+    # header = ["NameLast", "NameFirst", "SchoolUsername", "SchoolEmailPassword", "Group", "Platoon", "TABEID"]
+    header = ["First Name", "Last Name", "Username", "Password",
+              "Grade", "Class", "School", "Student Number"]
+    # fieldnames = ["NameFirst", "NameLast", "SchoolUsername", "SchoolEmailPassword", "GradeLevel", "Group", ]
     # First Name, Last Name, Username, Password, Grade, Class, School
     with open(os.path.join(outputfolder, 'lexia.csv'), 'w') as output_file:
-        dict_writer = csv.DictWriter(output_file, header, extrasaction='ignore')
+        dict_writer = csv.DictWriter(
+            output_file, header, extrasaction='ignore')
         dict_writer.writeheader()
         dict_writer.writerows(lexia)
+
 
 def importManga():
     filename = "manga.csv"
@@ -291,50 +332,59 @@ def importManga():
 
     print("Generating usernames and passwords...")
     for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
-        print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
-        row = student["NameFirst"] + "," + student["NameLast"] + "," + str(classNo) + " - " + student["Group"] + " Group," + student["SchoolUsername"] + "," + student["SchoolEmailPassword"] + "," + "437494" + "," + "\r\n"
+        print("Generating row for student: %s, %s" %
+              (student["NameLast"], student["NameFirst"]))
+        row = student["NameFirst"] + "," + student["NameLast"] + "," + str(
+            classNo) + " - " + student["Group"] + " Group," + student["SchoolUsername"] + "," + student["SchoolEmailPassword"] + "," + "437494" + "," + "\r\n"
 
         stucsvwriter(filename, row)
 
+
 def importGrizzlyApp():
-    #stuff
+    # stuff
     print("TODO")
 
+
 def importGoGuardianPLT():
-    #stuff
+    # stuff
     print("TODO")
+
 
 def importMathspace():
     header = "First name,Last name,Email (optional),Parent email (optional)\r\n"
 
     print("Generating mathspace...")
     for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
-        print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
+        print("Generating row for student: %s, %s" %
+              (student["NameLast"], student["NameFirst"]))
         filename = student["Group"] + " Group Mathspace.csv"
 
         if Path(outputfolder + os.path.sep + filename).is_file():
             print(outputfolder + os.path.sep + filename)
         else:
-            #create file
+            # create file
             print("Creating file in output folder...")
             stucsvcreator(filename, header)
 
-        row = student["NameFirst"] + "," + student["NameLast"] + "," + student["SchoolEmail"] + ",\r\n"
+        row = student["NameFirst"] + "," + student["NameLast"] + \
+            "," + student["SchoolEmail"] + ",\r\n"
 
         stucsvwriter(filename, row)
+
 
 def importGoGuardianPLT():
     header = "email\r\n"
 
     print("Generating GoGuardian...")
     for student in filemaker_get_records(query=[{'StatusActive': 'Yes'}]):
-        print("Generating row for student: %s, %s" % (student["NameLast"], student["NameFirst"]))
+        print("Generating row for student: %s, %s" %
+              (student["NameLast"], student["NameFirst"]))
         filename = student["Platoon"] + "PLT GoGuardian.csv"
 
         if Path(outputfolder + os.path.sep + filename).is_file():
             print(outputfolder + os.path.sep + filename)
         else:
-            #create file
+            # create file
             print("Creating file in output folder...")
             stucsvcreator(filename, header)
 
@@ -345,7 +395,8 @@ def importGoGuardianPLT():
 
 def import_edmentum():
     # First Name,Middle Name,Last Name,User Name,Password,Role,Status,Grade,SIS ID,Federal ID,Email Address,State ID,Gender,Date of Birth,Location,Target Graduation Year,Socio Economic Status,Special Needs,Ethnic Origin,Migrant,Foster Care,Homeless,Armed Forces,Primary Language,Educational Program,AYP Reporting Category,Labor Force,Public Assistance,Disability Status,Rural Residency Status,Primary Learning Reason or Goal for Attending,Secondary Learning Reason or Goal for Attending,Post Secondary Program Enrollment Type,Educator Permissions
-    header = ["First Name","Last Name","User Name","Password","Role","Status","Grade","SIS ID","Email Address","Gender","Date of Birth"]
+    header = ["First Name", "Last Name", "User Name", "Password", "Role",
+              "Status", "Grade", "SIS ID", "Email Address", "Gender", "Date of Birth"]
 
     print("Generating Edmentum...")
 
@@ -395,44 +446,47 @@ def main():
         exit()
     elif choice == "1":
         # inputcsv = tkFileDialog.askopenfilename(title="Choose the export from Filemaker.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
-        #inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=["*.csv", "*.mer"], multiple=False)
-        #print("Filemaker export is: " + inputcsv)
+        # inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=["*.csv", "*.mer"], multiple=False)
+        # print("Filemaker export is: " + inputcsv)
 
         usernamegen()
         print("Make sure to modify username CSV so usernames are accurate.")
         main()
     elif choice == "2":
-        #inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
-        inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=["*.csv", "*.mer"], multiple=False)
+        # inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
+        inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=[
+                                       "*.csv", "*.mer"], multiple=False)
         print("Usernames CSV is: " + inputcsv)
 
         moodleimportgen(inputcsv)
         main()
     elif choice == "3":
-        #inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
+        # inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
         # inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=["*.csv", "*.mer"], multiple=False)
-        #print("Usernames CSV is: " + inputcsv)
+        # print("Usernames CSV is: " + inputcsv)
 
         importAD()
         main()
     elif choice == "4":
-        #inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
-        inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=["*.csv", "*.mer"], multiple=False)
+        # inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
+        inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=[
+                                       "*.csv", "*.mer"], multiple=False)
         print("Usernames CSV is: " + inputcsv)
 
         createStudentHaparaList(inputcsv)
         main()
     elif choice == "5":
-        #inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
-        inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=["*.csv", "*.mer"], multiple=False)
+        # inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
+        inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=[
+                                       "*.csv", "*.mer"], multiple=False)
         print("Usernames CSV is: " + inputcsv)
 
         fmpimportgen(inputcsv)
         main()
     elif choice == "6":
-        #inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
+        # inputcsv = tkFileDialog.askopenfilename(title="Choose the generated usernames CSV.", filetypes=[('CSV', '*.csv'), ('All files','.*')], message="Choose the export from Filemaker.")
         # inputcsv = easygui.fileopenbox(msg="Choose file", title="Choose", filetypes=["*.csv", "*.mer"], multiple=False)
-        #print("Usernames CSV is: " + inputcsv)
+        # print("Usernames CSV is: " + inputcsv)
 
         importLexia()
         main()
@@ -452,5 +506,6 @@ def main():
         print("Oops, please try again!")
         main()
 
-#printvalues()
+
+# printvalues()
 main()
