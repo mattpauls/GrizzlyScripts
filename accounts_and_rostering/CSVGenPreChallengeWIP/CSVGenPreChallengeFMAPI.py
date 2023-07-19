@@ -1,3 +1,4 @@
+from filemaker_api.filemaker_api import filemaker_get_records
 __author__ = 'mattpauls'
 
 # from tkFileDialog import askdirectory
@@ -19,7 +20,6 @@ FM_DIR = os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "filemaker_api")
 sys.path.append(os.path.dirname(FM_DIR))
 
-from filemaker_api.filemaker_api import filemaker_get_records
 
 load_dotenv()
 
@@ -114,6 +114,7 @@ def genpassword():
 def dinopass():
     """
     Returns a password from Dinopass' API that does not include gang-related or other inappropriate numbers.
+    As of July 2023, teachers opted to not use this one, the word combinations provided could have double meanings if read a certain way.
     """
     dinopass_url = "https://www.dinopass.com/password/simple"
     exclude = [13, 14, 23, 69]
@@ -171,7 +172,7 @@ def usernamegen():
         username = (username[:18]) if len(username) > 18 else username
         username = username + classNo
         email = username + "@mygya.com"
-        password = dinopass()
+        password = genpassword()
 
         print(username, password)
         # create the row to write to the file
