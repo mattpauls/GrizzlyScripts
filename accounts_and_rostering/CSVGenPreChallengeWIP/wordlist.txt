@@ -317,7 +317,6 @@ frontier
 frozen
 fulcrum
 funniest
-funny
 further
 future
 fuzzily
