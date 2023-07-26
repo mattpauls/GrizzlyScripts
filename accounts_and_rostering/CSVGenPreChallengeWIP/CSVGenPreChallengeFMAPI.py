@@ -1,4 +1,3 @@
-from filemaker_api.filemaker_api import filemaker_get_records
 __author__ = 'mattpauls'
 
 # from tkFileDialog import askdirectory
@@ -20,6 +19,7 @@ FM_DIR = os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "filemaker_api")
 sys.path.append(os.path.dirname(FM_DIR))
 
+from filemaker_api.filemaker_api import filemaker_get_records
 
 load_dotenv()
 
