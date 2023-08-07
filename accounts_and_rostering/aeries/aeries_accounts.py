@@ -6,10 +6,11 @@ import yagmail
 import time
 
 # Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
-FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
+FM_DIR = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "filemaker_api")
 sys.path.append(os.path.dirname(FM_DIR))
 
-from filemaker_api.filemaker_api import filemaker_get_records
+from filemaker_api.filemaker_api import filemaker_get_records  # noqa
 
 c = Console()
 
@@ -26,7 +27,7 @@ def generate_body(NameLast, SchoolEmail, SchoolEmailPassword, AeriesVPCCode, Aer
         f"Student Home Telephone Number: {Guardian1PhoneHome}\n"
         f"Verification Code: {AeriesVPCCode}</p>"
         "<p>Mr. Pauls & Ms. Mauch</p>"
-        )
+    )
 
 
 def send_emails() -> None:
@@ -35,12 +36,15 @@ def send_emails() -> None:
     Sends an email to address contained in the SchoolEmail field for each student record found, formatted with generate_body().
     """
 
-    search_fields = ["NameLast", "NameFirst", "SchoolEmail", "SchoolEmailPassword", "AeriesVPCCode", "AeriesID", "Guardian1PhoneHome"]
-    students = filemaker_get_records(query=[{'StatusActive': 'Yes'}], fields=search_fields)
+    search_fields = ["NameLast", "NameFirst", "SchoolEmail", "SchoolEmailPassword",
+                     "AeriesVPCCode", "AeriesID", "Guardian1PhoneHome", "Group"]
+    students = filemaker_get_records(
+        query=[{'StatusActive': 'Yes'}], fields=search_fields)
 
     with yagmail.SMTP("noreply@mygya.com") as yag:
         for s in students:
-            c.print(f"Sending email for {s['SchoolEmail']}")
+            c.print(
+                f"Sending email for {s['SchoolEmail']} in Group {s['Group']}")
 
             contents = generate_body(
                 s["NameLast"],
@@ -62,7 +66,7 @@ def send_emails() -> None:
 
 
 def main():
-    while(True):
+    while (True):
         c.print("\n")
         c.rule(title="Student Aeries Setup Email Merge")
         c.print("1: Send student Aeries login emails")
