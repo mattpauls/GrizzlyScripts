@@ -30,7 +30,7 @@ def generate_body(NameLast, SchoolEmail, SchoolEmailPassword, AeriesVPCCode, Aer
     )
 
 
-def send_emails() -> None:
+def send_emails(group_selection: str) -> None:
     """
     Gets specified fields from FileMaker for each student record.
     Sends an email to address contained in the SchoolEmail field for each student record found, formatted with generate_body().
@@ -39,30 +39,31 @@ def send_emails() -> None:
     search_fields = ["NameLast", "NameFirst", "SchoolEmail", "SchoolEmailPassword",
                      "AeriesVPCCode", "AeriesID", "Guardian1PhoneHome", "Group"]
     students = filemaker_get_records(
-        query=[{'StatusActive': 'Yes'}], fields=search_fields)
+        query=[{'StatusActive': 'Yes', 'Group': group_selection}], fields=search_fields)
 
     with yagmail.SMTP("noreply@mygya.com") as yag:
         for s in students:
-            c.print(
-                f"Sending email for {s['SchoolEmail']} in Group {s['Group']}")
+            if s["Group"] == group_selection:
+                c.print(
+                    f"Sending email for {s['SchoolEmail']} in Group {s['Group']}")
 
-            contents = generate_body(
-                s["NameLast"],
-                s["SchoolEmail"],
-                s["SchoolEmailPassword"],
-                s["AeriesVPCCode"],
-                s["AeriesID"],
-                s["Guardian1PhoneHome"]
-            )
+                contents = generate_body(
+                    s["NameLast"],
+                    s["SchoolEmail"],
+                    s["SchoolEmailPassword"],
+                    s["AeriesVPCCode"],
+                    s["AeriesID"],
+                    s["Guardian1PhoneHome"]
+                )
 
-            yag.send(
-                to=s["SchoolEmail"],
-                subject="Aeries Setup Instructions - How to check your grades",
-                contents=contents
-            )
+                yag.send(
+                    to=s["SchoolEmail"],
+                    subject="Aeries Setup Instructions - How to check your grades",
+                    contents=contents
+                )
 
-            # Just to be safe, wait a second between executions
-            time.sleep(1.5)
+                # Just to be safe, wait a second between executions
+                time.sleep(1.5)
 
 
 def main():
@@ -75,7 +76,13 @@ def main():
         option = Prompt.ask("Enter your choice:", choices=["1", "2"])
 
         if option == "1":
-            send_emails()
+            while (True):
+                group_selection = Prompt.ask("Select Group:", choices=[
+                                             "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "q"])
+                if group_selection == "q":
+                    break
+                else:
+                    send_emails(group_selection)
         elif option == "2":
             exit()
 
