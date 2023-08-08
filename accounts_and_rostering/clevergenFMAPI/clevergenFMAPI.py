@@ -12,10 +12,11 @@ from rich.console import Console
 from rich.prompt import Prompt
 
 # Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
-FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
+FM_DIR = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "filemaker_api")
 sys.path.append(os.path.dirname(FM_DIR))
 
-from filemaker_api.filemaker_api import filemaker_get_records
+from filemaker_api.filemaker_api import filemaker_get_records  # noqa
 
 c = Console()
 
@@ -39,13 +40,14 @@ def stu_csv_creator_dict(file_path, header, d):
             writer.writerow(row)
 
 
-#Username Generator
+# Username Generator
 def studentsgen() -> None:
     """
     Generates a file students.csv in the output folder, properly formatted for importing to Clever.
     """
     filename = "students.csv"
-    header = ["School_id","Student_id","Student_number","Last_name","First_name","Grade","Gender","DOB","IEP_status","Student_email"]
+    header = ["School_id", "Student_id", "Student_number", "Last_name",
+              "First_name", "Grade", "Gender", "DOB", "IEP_status", "Student_email"]
     file_path = os.path.join(outputfolder, filename)
     # Create a backup of the original file, if it exists
     backup_file(file_path)
@@ -86,6 +88,7 @@ def add_enrollment(e: list, period, stu_id, course) -> list:
 
     return e
 
+
 def enrollmentsgen() -> None:
     """
     Generates a file enrollments.csv in the output folder, properly formatted for importing to Clever.
@@ -121,35 +124,43 @@ def enrollmentsgen() -> None:
         # Loop over our list of contract classes, and add any that we found that match student TABEIDs
         for contract_class in contract_class_list:
             if (int(s["TABEID"]) == int(contract_class["TABEID"])):
-                c.print(f"Adding student {s['NameLast']}, {s['NameFirst']} with TABEID {s['TABEID']} to contract course {contract_class['Section_id']}")
-                e = add_enrollment(e, contract_class["Period"], s["TABEID"], contract_class["Section_id"])
+                c.print(
+                    f"Adding student {s['NameLast']}, {s['NameFirst']} with TABEID {s['TABEID']} to contract course {contract_class['Section_id']}")
+                e = add_enrollment(
+                    e, contract_class["Period"], s["TABEID"], contract_class["Section_id"])
 
         # Loop over the sections that we loaded from the sections.csv file, and add any that we found that match student TABEIDs
         for section in sections:
             # Grab the first two characters from the section name (formatted like D5English)
-            sectionAndPeriod = re.search("(?<=C\d\dS\d)[A-J][1-9]", section["Section_id"])
+            sectionAndPeriod = re.search(
+                "(?<=C\d\dS\d)[A-J][1-9]", section["Section_id"])
 
             # If Section_id is formatted as A1, B3, etc (not Contract1) AND If student group matches this section's group
             if (sectionAndPeriod) and (s["Group"] == section["Section_id"][5:6]):
                 # This adds the remainder of the classes the student is enrolled in with their school group to the sections they're enrolled in
                 # with the exception of the periods they're already enrolled in a contract class
                 if not any(int(d["Student_id"]) == int(s["TABEID"]) and int(d["Period"]) == int(section["Period"]) for d in e):
-                    c.print(f"Adding student {s['NameLast']}, {s['NameFirst']} with TABEID {s['TABEID']} to course {section['Section_id']}")
-                    e = add_enrollment(e, section["Period"], s["TABEID"], section["Section_id"])
+                    c.print(
+                        f"Adding student {s['NameLast']}, {s['NameFirst']} with TABEID {s['TABEID']} to course {section['Section_id']}")
+                    e = add_enrollment(
+                        e, section["Period"], s["TABEID"], section["Section_id"])
 
     c.print("\n")
     c.print(f"Creating file {filename} in {outputfolder}")
     stu_csv_creator_dict(file_path, header, e)
+
 
 def backup_file(filename: str) -> None:
     """
     Renames file and leaves in place as a backup.
     """
     filename = Path(filename)
-    new_filename = filename.with_stem(filename.stem+time.strftime("%Y%m%d-%H%M%S"))
+    new_filename = filename.with_stem(
+        filename.stem+time.strftime("%Y%m%d-%H%M%S"))
     if filename.exists() and not new_filename.exists():
         c.print(f"Renaming {filename} to {new_filename}")
         os.rename(filename, new_filename)
+
 
 def check_paths_exist(file_list: list, parent_dir: str) -> bool:
     """
@@ -157,8 +168,9 @@ def check_paths_exist(file_list: list, parent_dir: str) -> bool:
     """
     for f in file_list:
         if not Path(parent_dir).joinpath(f).exists():
-            raise FileNotFoundError # I need to think this through a little more. Probably not the best way to handle this. If I were to make it truly modular, maybe let the calling function determine what to do with a False return?
+            raise FileNotFoundError  # I need to think this through a little more. Probably not the best way to handle this. If I were to make it truly modular, maybe let the calling function determine what to do with a False return?
     return True
+
 
 def upload_clever() -> None:
     c.print("Uploading to Clever...")
@@ -168,13 +180,15 @@ def upload_clever() -> None:
     files_to_upload = ["enrollments.csv", "students.csv"]
 
     if check_paths_exist(files_to_upload, outputfolder):
-        cftp = Connection(clever_sftp_url, clever_sftp_username, connect_kwargs={"password": clever_sftp_password})
+        cftp = Connection(clever_sftp_url, clever_sftp_username, connect_kwargs={
+                          "password": clever_sftp_password})
         for f in files_to_upload:
             c.print(f"Uploading: {Path(outputfolder).joinpath(f)}")
             cftp.put(Path(outputfolder).joinpath(f))
 
+
 def main():
-    while(True):
+    while (True):
         c.print("\n")
         c.rule(title="Clever File Generation")
         c.print("1: Generate student file")
@@ -192,6 +206,7 @@ def main():
             upload_clever()
         elif option == "4":
             exit()
+
 
 if __name__ == "__main__":
     main()
