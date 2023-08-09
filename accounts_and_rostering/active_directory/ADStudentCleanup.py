@@ -7,10 +7,11 @@ from rich.console import Console
 load_dotenv()
 
 # Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out without moving my files around in the directory.
-FM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "filemaker_api")
+FM_DIR = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "filemaker_api")
 sys.path.append(os.path.dirname(FM_DIR))
 
-from filemaker_api.filemaker_api import filemaker_get_records
+from filemaker_api.filemaker_api import filemaker_get_records  # noqa
 
 c = Console()
 
@@ -40,7 +41,8 @@ def moveUser(ad, user, newLocation):
         print(f"Moving {user['samAccountName']} isp OU.")
         userNewDn = "OU=isp,DC=GYA,Dc=local"
 
-    ad.rename_s(user["dn"], user["userRdn"], userNewDn) # uncomment to actually make the move.
+    # uncomment to actually make the move.
+    ad.rename_s(user["dn"], user["userRdn"], userNewDn)
 
 
 def getAlumniClass(student: str) -> str:
@@ -49,9 +51,9 @@ def getAlumniClass(student: str) -> str:
 
     Extracts the class number, and returns a string with where the account should be located in the alumni OU.
     """
-    studentClass = student[-2:] # get the class number from the student's username
+    studentClass = student[-2:]  # get the class number from the student's username
 
-    if studentClass.isdigit(): # Check if what we got was a number, if so continue, otherwise skip
+    if studentClass.isdigit():  # Check if what we got was a number, if so continue, otherwise skip
         alumniOU = "OU=class" + studentClass + ",OU=alumni,DC=gya,DC=local"
         return alumniOU
     else:
@@ -80,7 +82,8 @@ def searchAD(ad) -> dict:
     ]
 
     for ou in ous_to_search:
-        result = ad.search_s(f"ou={ ou }, dc=gya, dc=local", ldap.SCOPE_SUBTREE, "(&(objectClass=user))", ["employeeID", "samaccountname", "cn"])
+        result = ad.search_s(f"ou={ ou }, dc=gya, dc=local", ldap.SCOPE_SUBTREE, "(&(objectClass=user))", [
+                             "employeeID", "samaccountname", "cn"])
 
         for r in result:
             samaccountname = r[1]['sAMAccountName'][0].decode('UTF-8')
@@ -98,7 +101,7 @@ def searchAD(ad) -> dict:
                     'dn': r[0],
                     'userRdn': userRdn,
                     'samAccountName': samaccountname
-                    }
+                }
 
     # ad.unbind_s() # uncomment for testing purposes, normally ad would be passed to this function and the unbinding would be handled outside of it.
     # c.print(students) # uncomment for testing
@@ -130,7 +133,7 @@ def find_student_in_ad(ad, student, ad_students):
         'dn': r[0][0],
         'userRdn': userRdn,
         'samAccountName': samaccountname
-        }
+    }
 
     return ad_students
 
@@ -166,7 +169,8 @@ def processStudents():
                 # Check if currently in alumni OU
                 if "alumni" not in ad_students[fm_username]["dn"]:
                     # move to alumni OU
-                    c.print(f"{fm_username} is dropped and needs to move to alumni.")
+                    c.print(
+                        f"{fm_username} is dropped and needs to move to alumni.")
                     moveUser(ad, ad_students[fm_username], "alumni")
                 # TODO Check if student_status == "no" and if not disabled in AD, disable in AD
                 # TODO remove from students group
@@ -175,7 +179,8 @@ def processStudents():
             # The only exception is if a student is going to be attending ISP next cycle. In that case, move them to the ISP OU
             if school_year_end == "1" and stu_status in ["isp", "yes", "Yes", "no", "No"]:
                 if stu_status in ["yes", "Yes"] and student["ISPNextCycle"] in ["yes", "Yes"]:
-                    c.print(f"{fm_username} is in ISP next cycle and needs to be moved to the ISP OU.")
+                    c.print(
+                        f"{fm_username} is in ISP next cycle and needs to be moved to the ISP OU.")
                     moveUser(ad, ad_students[fm_username], "isp")
                 else:
                     c.print(f"{fm_username} needs to move to alumi OU.")
@@ -184,10 +189,12 @@ def processStudents():
             # If it's still school, process students as needed.
             if school_year_end == "0":
                 if stu_status in ["yes", "Yes"] and "students" not in ad_students[fm_username]["dn"]:
-                    c.print(f"{fm_username} is an active student and should be in the students OU.")
+                    c.print(
+                        f"{fm_username} is an active student and should be in the students OU.")
                     moveUser(ad, ad_students[fm_username], "students")
                 elif stu_status in ["isp"] and "isp" not in ad_students[fm_username]["dn"]:
-                    c.print(f"{fm_username} is an active ISP student and should be in the isp OU.")
+                    c.print(
+                        f"{fm_username} is an active ISP student and should be in the isp OU.")
                     moveUser(ad, ad_students[fm_username], "isp")
 
     ad.unbind_s()
