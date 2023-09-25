@@ -215,6 +215,9 @@ def updateteacheraccount():
         print('Adding to teachers@mygya.com group...')
         os.system(
             " ".join([gam, 'update group teachers add member user', username]))
+        print('Adding to Google Classroom group...')
+        os.system(
+            " ".join([gam, 'update group classroom_teachers add member user', username]))
     print('Adding shared Academic Calendar...')
     os.system(" ".join([gam, 'user', username,
               'add calendar', school_staff_calendar_email, 'selected true']))
