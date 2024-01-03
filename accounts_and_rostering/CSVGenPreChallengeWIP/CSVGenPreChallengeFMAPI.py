@@ -1,14 +1,10 @@
 __author__ = 'mattpauls'
 
-# from tkFileDialog import askdirectory
-# import Tkinter, tkFileDialog
 import sys
-# sys.path.append('/usr/local/lib/python3.9/site-packages') # was python3.7
 import os
 import csv
 import random
 from unidecode import unidecode
-# from mailmerge import MailMerge
 from pathlib import Path
 from dotenv import load_dotenv
 from rich.console import Console
@@ -19,7 +15,7 @@ FM_DIR = os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "filemaker_api")
 sys.path.append(os.path.dirname(FM_DIR))
 
-from filemaker_api.filemaker_api import filemaker_get_records
+from filemaker_api.filemaker_api import filemaker_get_records # noqa
 
 load_dotenv()
 
@@ -91,7 +87,7 @@ def printvalues():
     return
 
 
-def randNumber():
+def randNumber() -> int:
     """
     Returns a two-digit random integer that does not include gang-related or other inappropriate numbers.
     """
@@ -100,13 +96,27 @@ def randNumber():
     return randNumber() if rand in exclude else rand
 
 
-def genpassword():
+def randWord() -> str:
+    """
+    Returns a random word from the wordlist file, with a minimum character count of 7 and stripped of any trailing whitespace/carriage returns.
+    """
+    with open(os.path.join(__location__, 'wordlist.txt')) as wordlist:
+        word = random.choice(wordlist.readlines())
+        word = word.rstrip() # remove any trailing whitespace or carriage returns
+
+        if len(word) >= 7:
+            return word
+        else:
+            return randWord()
+
+
+def genpassword() -> str:
     """
     Returns a password made up of a random word and random number.
     """
-    wordlist = open(os.path.join(__location__, 'wordlist.txt'))
-    randword = random.choice(wordlist.readlines())
-    password = randword.rstrip() + str(randNumber())
+    word = randWord()
+    word = word.capitalize()
+    password = word + str(randNumber()) + "!"
 
     return password
 
@@ -437,7 +447,7 @@ def main():
     print("7. Create Mangahigh import file. NOT USED 1/2023")
     print("8. Create Mathspace import files. NOT USED 1/2023")
     print("9. Create GoGuardian PLT import files.")
-    print("10. Create Edmentum import files.")
+    print("10. Create Edmentum import files. NOT USED AS OF CLASS 51")
     print("0. Exit.")
     print("====================")
     print("\n")
