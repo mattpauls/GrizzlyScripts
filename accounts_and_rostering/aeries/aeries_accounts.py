@@ -4,6 +4,9 @@ from rich.console import Console
 from rich.prompt import Prompt
 import yagmail
 import time
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out.
 FM_DIR = os.path.join(os.path.dirname(os.path.dirname(
@@ -14,6 +17,8 @@ from filemaker_api.filemaker_api import filemaker_get_records  # noqa
 
 c = Console()
 
+email_address = os.getenv("EMAIL_ADDRESS")
+email_password = os.getenv("EMAIL_PASSWORD")
 
 def generate_body(NameLast, SchoolEmail, SchoolEmailPassword, AeriesVPCCode, AeriesID, Guardian1PhoneHome) -> str:
     return (
@@ -41,7 +46,7 @@ def send_emails(group_selection: str) -> None:
     students = filemaker_get_records(
         query=[{'StatusActive': 'Yes', 'Group': group_selection}], fields=search_fields)
 
-    with yagmail.SMTP("noreply@mygya.com") as yag:
+    with yagmail.SMTP(email_address, email_password) as yag:
         for s in students:
             if s["Group"] == group_selection:
                 c.print(
