@@ -183,6 +183,8 @@ def processStudents():
                         f"{fm_username} is in ISP next cycle and needs to be moved to the ISP OU.")
                     moveUser(ad, ad_students[fm_username], "isp")
                 else:
+                    #TODO if the student is dropped, they have already been moved and this will fail because they are no longer in the same location.
+                    #workaround is to run this without the "end of the school year" flag first, then run it again.
                     c.print(f"{fm_username} needs to move to alumi OU.")
                     moveUser(ad, ad_students[fm_username], "alumni")
 
