@@ -15,7 +15,7 @@ def addToGroup(cadetEmail, groupEmail):
 
     # capture_output = True
     process = subprocess.run(
-        ['/Users/mpauls/bin/gam/gam', 'update', 'group', groupEmail, 'add', 'member', 'allmail', 'user', cadetEmail]
+        ['/Users/mpauls/bin/gam7/gam', 'update', 'group', groupEmail, 'add', 'member', 'allmail', 'user', cadetEmail]
     )
 
     # input("Press Enter to continue...")
