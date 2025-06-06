@@ -9,7 +9,7 @@ from filemaker_api.filemaker_api import filemaker_get_records
 
 
 #TODO figure out a better way of handling the input of this path.
-picturePath = "/Users/mpauls/Desktop/C50 - Intake Photos ORIGINAL"
+picturePath = "/Users/mpauls/Downloads/C54 - Intake Candidate Portraits original"
 
 
 # Assumes pictures are located in a folder like: /users/matt/desktop/class36intake/1/cropped/...
