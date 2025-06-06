@@ -6,7 +6,7 @@ import csv
 import re
 from pathlib import Path
 import time
-from fabric import Connection
+# from fabric import Connection
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
