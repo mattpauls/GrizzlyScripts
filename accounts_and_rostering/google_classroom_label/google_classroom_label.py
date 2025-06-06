@@ -9,29 +9,23 @@ sys.path.append(os.path.dirname(FM_DIR))
 
 from filemaker_api.filemaker_api import filemaker_get_records
 
-
-def addToGroup(cadetEmail, groupEmail):
-    print(f"Adding { cadetEmail } to { groupEmail }")
-
-    # capture_output = True
+def classroomLabel(cadetEmail):
+    print(f"Setting up label for {cadetEmail}")
     process = subprocess.run(
-        ['/Users/mpauls/bin/gam7/gam', 'update', 'group', groupEmail, 'add', 'member', 'allmail', 'user', cadetEmail]
+        ['/Users/mpauls/bin/gam/gam', 'user', cadetEmail, 'label', 'Google Classroom']
     )
-
-    # input("Press Enter to continue...")
-    time.sleep(1) # wait a bit before moving on, don't want to run into API limitations
-
+    time.sleep(.05)
+    process = subprocess.run(
+        ['/Users/mpauls/bin/gam/gam', 'user', cadetEmail, 'filter', 'from', 'classroom.google.com', 'label', 'Google Classroom', 'archive' ]
+    )
+    time.sleep(.05)
     return
-
 
 def updateGroups():
     students = filemaker_get_records(query=[{'StatusActive': 'Yes'}])
 
     for s in students:
-        addToGroup(s['SchoolEmail'], str(s['Platoon'])[:1] + '-platoon@mygya.com')
-        if s['Group']:
-            addToGroup(s['SchoolEmail'], s['Group'][:1].lower() + '-group@mygya.com')
-
+        classroomLabel(s['SchoolEmail'])
 
 if __name__ == "__main__":
     updateGroups()

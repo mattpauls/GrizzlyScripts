@@ -1,10 +1,10 @@
 import os
 
 # Location of GAM
-gam = "/Users/mpauls/bin/gam/gam"
+gam = "/Users/mpauls/bin/gam7/gam"
 
 # Ask for directory where we want to upload pictures from
-folder = "/Users/mpauls/Desktop/Class 51/Mugs/email/4"
+folder = "/Users/mpauls/Downloads/C54 - Intake Candidate Portraits original/email/4"
 
 # Scan through the directory, pick up all images in it, and upload them to Google Apps.
 # Assumes pictures are named with the email address of the student, e.g. doejohn@mygya.com.jpg

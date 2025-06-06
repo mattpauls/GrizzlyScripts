@@ -2,11 +2,12 @@
 # More about OpenCV and face detection: https://realpython.com/face-recognition-with-python/
 
 # Install OpenCV for the platform you're on
+# MacOS: brew install opencv
 import sys
 import os, re
 #sys.path.append('/usr/local/lib/python2.7/site-packages')
 #sys.path.append('/usr/local/lib/python2.7/site-packages')
-sys.path.append('/usr/local/lib/python3.9/site-packages')
+sys.path.append('/usr/local/lib/python3.13/site-packages')
 
 import cv2
 import glob
@@ -41,7 +42,7 @@ for file in files:
     print("Found {0} faces!".format(len(faces)))
     print("in file " + file)
 
-    croppadding = 200
+    croppadding = 300
     # Crop Padding
     left = croppadding # originally 100, adjust based on the original size of the pictures, been using 250 with some success
     right = croppadding # originally 100
