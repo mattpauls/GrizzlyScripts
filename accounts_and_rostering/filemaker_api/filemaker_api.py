@@ -29,19 +29,25 @@ def filemaker_get_records(auth: bool = False, fields: list = None, limit: int = 
 
     if auth:
         fms_username = getpass.getuser()
-        c.print(f'Username: {fms_username}')
 
         fms_password = getpass.getpass()
     else:
         fms_username = os.getenv("FMS_USERNAME")
         fms_password = os.getenv("FMS_PASSWORD")
 
+    c.print("Using the following configuration:")
+    c.print(f'Username: {fms_username}')
+    c.print(f'URL: {os.getenv("FMS_URL")}')
+    c.print(f'Database: {os.getenv("FMS_DATABASE")}')
+    c.print(f'Layout: {os.getenv("FMS_LAYOUT")}')
+
     fms = fmrest.Server(os.getenv("FMS_URL"),
         user=fms_username,
         password=fms_password,
         database=os.getenv("FMS_DATABASE"),
         layout=os.getenv("FMS_LAYOUT"),
-        api_version='vLatest')
+        api_version='vLatest',
+        timeout=30)
 
     try:
         activecadets = []
@@ -63,6 +69,8 @@ def filemaker_get_records(auth: bool = False, fields: list = None, limit: int = 
             "SpecialEducationIEP"
         ]
 
+        c.print("=============")
+        c.print("Attempting to sign in to FileMaker...")
         fms.login()
 
         # Get records
