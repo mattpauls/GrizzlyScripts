@@ -6,6 +6,9 @@ from rich.console import Console
 
 load_dotenv()
 
+#TODO handle moves from students to alumni when a student's account has been suspended, right now it errors out when trying to move a disabled account.
+# TODO actually seems to be working okay to move the student, it's after moving a disabled account that it then immediately errors. Need to figure out what is going on.
+
 # Add FileMaker module to path. This probably isn't the best way to do it, but I spent way too much time trying to figure it out without moving my files around in the directory.
 FM_DIR = os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "filemaker_api")
