@@ -13,7 +13,7 @@ load_dotenv()
 console = Console()
 
 # Location of GAM
-gam = "/Users/mpauls/bin/gam7/gam"
+gam = "/Users/mpauls@mygya.com/bin/gam7/gam"
 
 # TODO add feature to search Filemaker for student,
 # return username/plt/group/StatusActive to reference or choose to disable
