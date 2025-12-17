@@ -91,14 +91,16 @@ def export_1314() -> None:
     """
     filename = "TABE_students_1314.csv"
     header = [
-    "District Code", "School Code", "Student ID", "Student Last Name", 
-    "Student First Name", "Student Middle Initial", "Gender", "Date of Birth", 
-    "Ethnicity", "Race - American Indian or Alaskan Native", "Race - Asian", 
-    "Race - Black or African American", "Race - Native Hawaiian or Other Pacific Islander", 
-    "Race - Caucasian", "Race - Other", "Public Assistance Status", "IEP", "504", 
-    "LEP/ELL", "Program", "Additional Program", "ESL Status", "Labor Force Status", 
-    "HSE Certificate", "HS Diploma", "Classified Accommodation - Reading", 
-    "Classified Accommodation - Mathematics", "Classified Accommodation - Language"
+    "District Code", "School Code", "Student ID", "Last Name", "First Name",
+    "Middle Initial", "Gender", "Date of Birth", "Country of Origin", "Ethnicity",
+    "American Indian or Alaskan Native", "Asian", "Black or African American",
+    "Native Hawaiian or Other Pacific Islander", "White", "Multiracial", "Other",
+    "English First Language", "Home Language", "EL/ML", "ESL Status", "Disability",
+    "504", "IEP", "Public Assistance Status", "Labor Force Status", "Program",
+    "Additional Program", "Highest Level of Education", "Text-to-Speech",
+    "Session Extension 1.25 Times", "Session Extension 1.5 Times",
+    "Session Extension 2.0 Times", "Untimed Test", "Test Session Name", "Test",
+    "Reading Level", "Mathematics Level", "Language Level", "FILLER"
 ]
     file_path = os.path.join(outputfolder, filename)
 
@@ -110,8 +112,8 @@ def export_1314() -> None:
         s["District Code"] = district_code
         s["School Code"] = school_code
         s["Student ID"] = s["TABEID"]
-        s["Student Last Name"] = classNo + s["Platoon"] + " " + s.pop("NameLast")
-        s["Student First Name"] = s.pop("NameFirst")
+        s["Last Name"] = classNo + s["Platoon"] + " " + s.pop("NameLast")
+        s["First Name"] = s.pop("NameFirst")
         s["Gender"] = s.pop("Gender")
         s["Date of Birth"] = s.pop("Birthday")
         s["Grade"] = s.pop("GradeLevel")
@@ -122,10 +124,10 @@ def export_1314() -> None:
         else:
             s["IEP"] = "N"
 
-        # if s["SpecialEducation504"] in ["Yes", "yes"]:
-        #     s["504"] = "Y"
-        # else:
-        #     s["504"] = "N"
+        # Test Session Assignment
+        s["Test Session Name"] = "C" + classNo + "_FORM13_PLT" + s["Platoon"]
+        s["Test"] = "L13" # assign auto-locator form 13
+
 
     c.print("\n")
     c.print(f"Creating file {filename} in {outputfolder}")
