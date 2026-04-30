@@ -215,8 +215,8 @@ def export_post_tabe_14(round: int = 1) -> None:
     assignments into DRC Insight. Produces one row per student per subject, using
     pre-test scaled scores and the NTA chart to determine the appropriate level.
 
-    Session names follow the pattern: C{class}_{subject}14_{level}{round}
-    e.g. C56_READ14_M1 for round 1, C56_READ14_M2 for round 2.
+    Session names follow the pattern: C{class}_14{subject}_{level}{round}
+    e.g. C56_14READ_M1 for round 1, C56_14READ_M2 for round 2.
     """
     filename = f"TABE_post_14_r{round}.csv"
     header = [
@@ -385,7 +385,7 @@ def export_post_tabe_14(round: int = 1) -> None:
         }
 
         for subject, level in subject_levels.items():
-            session_name = f"C{classNo}_{subject}14_{level}{round}"
+            session_name = f"C{classNo}_14{subject}_{level}{round}"
             row = {
                 **base_row,
                 'Test Session Name': session_name,
