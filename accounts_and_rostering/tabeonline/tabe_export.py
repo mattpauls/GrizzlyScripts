@@ -406,6 +406,295 @@ def export_post_tabe_14(round: int = 1) -> None:
     c.print(f"[green]Done! File saved to {file_path}[/green]")
 
 
+def export_retake_tabe_14(session_suffix: int = 2) -> None:
+    """
+    Generates TABE_retake_14_s{session_suffix}.csv for importing Form 14 retake
+    session assignments into DRC Insight, and TABE_retake_14_s{session_suffix}_roster.csv
+    as a student roster sorted by group then last name.
+
+    Includes students who:
+    - Have N/A in any post-test scale score (no statistically significant result), OR
+    - Did not improve on average across subjects (avg post − pre scale score diff ≤ 0)
+
+    Session names follow the pattern: C{class}_14{subject}_{level}{session_suffix}
+    e.g. C56_14READ_M2 for session_suffix=2.
+    """
+    filename = f"TABE_retake_14_s{session_suffix}.csv"
+    roster_filename = f"TABE_retake_14_s{session_suffix}_roster.csv"
+    header = [
+        "District Code", "School Code", "Student ID", "Last Name", "First Name",
+        "Middle Initial", "Gender", "Date of Birth", "Country of Origin", "Ethnicity",
+        "American Indian or Alaskan Native", "Asian", "Black or African American",
+        "Native Hawaiian or Other Pacific Islander", "White", "Multiracial", "Other",
+        "English First Language", "Home Language", "EL/ML", "ESL Status", "Disability",
+        "504", "IEP", "Public Assistance Status", "Labor Force Status", "Program",
+        "Additional Program", "Highest Level of Education", "Text-to-Speech",
+        "Session Extension 1.25 Times", "Session Extension 1.5 Times",
+        "Session Extension 2.0 Times", "Untimed Test", "Test Session Name", "Test",
+        "Reading Level", "Mathematics Level", "Language Level", "FILLER"
+    ]
+    roster_header = ["Last Name", "First Name", "Group", "Platoon", "TABEID", "Reading", "Mathematics", "Language"]
+    file_path = os.path.join(outputfolder, filename)
+    roster_path = os.path.join(outputfolder, roster_filename)
+    class_number = int(classNo)
+    subject_map = {'Reading': 'READ', 'Mathematics': 'MATH', 'Language': 'LANG'}
+
+    try:
+        connection = mysql.connector.connect(
+            host=MYSQL_HOST,
+            database=MYSQL_DATABASE,
+            user=MYSQL_USERNAME,
+            password=MYSQL_PASSWORD
+        )
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(f"""
+            SELECT
+                at.STUDENT_ID AS tabeid,
+                at.SUBTEST,
+                at.SCALED_SCORE,
+                at.NAME_LEVEL
+            FROM Assessment_TABE at
+            INNER JOIN Assessment_TABE_Cycle_Detail atcd ON at.id = atcd.assessment_tabe_id
+            INNER JOIN Cycle_Detail cd ON atcd.cycle_detail_id = cd.id
+            WHERE cd.class = {class_number}
+                AND cd.status = '1'
+                AND cd.program = 'residential'
+                AND at.test_usage = 'PRE';
+        """)
+        pre_assessment_records = cursor.fetchall()
+        c.print(f"Retrieved {len(pre_assessment_records)} pre-test assessment records.")
+
+        cursor.execute(f"""
+            SELECT
+                at.STUDENT_ID AS tabeid,
+                at.SUBTEST,
+                at.SCALED_SCORE,
+                at.NAME_LEVEL
+            FROM Assessment_TABE at
+            INNER JOIN Assessment_TABE_Cycle_Detail atcd ON at.id = atcd.assessment_tabe_id
+            INNER JOIN Cycle_Detail cd ON atcd.cycle_detail_id = cd.id
+            WHERE cd.class = {class_number}
+                AND cd.status = '1'
+                AND cd.program = 'residential'
+                AND at.test_usage = 'POST';
+        """)
+        post_assessment_records = cursor.fetchall()
+        c.print(f"Retrieved {len(post_assessment_records)} post-test assessment records.")
+
+        cursor.execute(f"""
+            SELECT
+                cd.tabeid,
+                cd.platoon,
+                cd.`group`,
+                cd.is_hispanic,
+                cd.race_code,
+                cd.el_classification,
+                cd.has_iep,
+                cd.sped_iep,
+                cd.has_504_plan,
+                cd.sped_504,
+                cd.program,
+                p.first_name,
+                p.last_name,
+                p.middle_name,
+                p.gender,
+                p.birth_date
+            FROM Cycle_Detail cd
+            INNER JOIN Person p ON cd.person_id = p.id
+            WHERE cd.class = {class_number}
+                AND cd.status = '1'
+                AND cd.program = 'residential';
+        """)
+        demographics = {row['tabeid']: row for row in cursor.fetchall()}
+        c.print(f"Retrieved demographics for {len(demographics)} students.")
+
+    except Error as e:
+        c.print(f"[bold red]MySQL error: {e}[/bold red]")
+        raise
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+    # Build pre-test lookup: {tabeid: {subject: {'score': ..., 'level': ...}}}
+    pre_scores: dict[int, dict[str, dict]] = {}
+    for record in pre_assessment_records:
+        tabeid = record['tabeid']
+        subject = subject_map.get(record['SUBTEST'])
+        if not subject or record['SCALED_SCORE'] == 'N/A':
+            continue
+        pre_scores.setdefault(tabeid, {})[subject] = {
+            'score': record['SCALED_SCORE'],
+            'level': record['NAME_LEVEL'],
+        }
+
+    # Build post-test lookup: {tabeid: {subject: score_or_None}}
+    # None indicates N/A (no statistically significant result)
+    post_scores: dict[int, dict[str, object]] = {}
+    for record in post_assessment_records:
+        tabeid = record['tabeid']
+        subject = subject_map.get(record['SUBTEST'])
+        if not subject:
+            continue
+        score = None if record['SCALED_SCORE'] == 'N/A' else record['SCALED_SCORE']
+        post_scores.setdefault(tabeid, {})[subject] = score
+
+    # Determine retake subjects per student
+    # A subject is included when: post score is N/A (use pre-test data for level),
+    # or post score <= pre score (no improvement; use post score for level).
+    # {tabeid: {subject: {'score': ..., 'level': ...}}}
+    retake_map: dict[int, dict[str, dict]] = {}
+
+    for tabeid, demo in demographics.items():
+        pre = pre_scores.get(tabeid, {})
+        post = post_scores.get(tabeid, {})
+
+        # Gate: only include students whose average valid post score decreased.
+        # avg_diff is None when all post scores are N/A (no valid pairs to average),
+        # which also qualifies since the student couldn't be measured.
+        diffs = []
+        for subj in ['READ', 'MATH', 'LANG']:
+            if subj in pre and subj in post and post[subj] is not None:
+                try:
+                    diffs.append(float(post[subj]) - float(pre[subj]['score']))
+                except (ValueError, TypeError):
+                    pass
+        avg_diff = sum(diffs) / len(diffs) if diffs else None
+        if avg_diff is not None and avg_diff > 0:
+            continue
+
+        subjects_for_retake: dict[str, dict] = {}
+
+        for subj in ['READ', 'MATH', 'LANG']:
+            if subj not in pre or subj not in post:
+                continue
+            if post[subj] is None:
+                # N/A: assign based on pre-test score (expected next level)
+                subjects_for_retake[subj] = pre[subj].copy()
+            else:
+                try:
+                    if float(post[subj]) <= float(pre[subj]['score']):
+                        subjects_for_retake[subj] = {
+                            'score': post[subj],
+                            'level': pre[subj]['level'],
+                        }
+                except (ValueError, TypeError):
+                    pass
+
+        if subjects_for_retake:
+            retake_map[tabeid] = subjects_for_retake
+
+    c.print(f"\n{len(retake_map)} students identified for retake.")
+
+    rows = []
+    roster_rows = []
+
+    for tabeid, subject_data in retake_map.items():
+        demo = demographics.get(tabeid)
+        if not demo:
+            continue
+
+        if demo['has_iep'] is not None:
+            iep = 'Y' if demo['has_iep'] else 'N'
+        else:
+            iep = 'Y' if str(demo.get('sped_iep', '') or '').lower() in ('yes', 'y') else 'N'
+
+        if demo['has_504_plan'] is not None:
+            s504 = 'Y' if demo['has_504_plan'] else 'N'
+        else:
+            s504 = 'Y' if str(demo.get('sped_504', '') or '').lower() in ('yes', 'y') else 'N'
+
+        el_ml = 'Y' if demo.get('el_classification') in ('L', 'R', 'E') else 'N'
+        race_fields = _race_code_to_drc(demo.get('race_code'))
+
+        dob = demo['birth_date']
+        dob_str = dob.strftime('%m/%d/%Y') if dob else ''
+
+        last_name = (str(classNo) + str(demo['platoon'] or '') + ' ' + (demo['last_name'] or ''))[:20]
+        first_name = (demo['first_name'] or '')[:14]
+        middle_initial = (demo['middle_name'] or '')[:1]
+
+        base_row = {
+            'District Code': district_code,
+            'School Code': school_code,
+            'Student ID': tabeid,
+            'Last Name': last_name,
+            'First Name': first_name,
+            'Middle Initial': middle_initial,
+            'Gender': demo['gender'] or '',
+            'Date of Birth': dob_str,
+            'Country of Origin': '',
+            'Ethnicity': 'Y' if demo.get('is_hispanic') else 'N',
+            **race_fields,
+            'English First Language': '',
+            'Home Language': '',
+            'EL/ML': el_ml,
+            'ESL Status': '',
+            'Disability': '',
+            '504': s504,
+            'IEP': iep,
+            'Public Assistance Status': '',
+            'Labor Force Status': '',
+            'Program': '',
+            'Additional Program': '',
+            'Highest Level of Education': '',
+            'Text-to-Speech': '',
+            'Session Extension 1.25 Times': '',
+            'Session Extension 1.5 Times': '',
+            'Session Extension 2.0 Times': '',
+            'Untimed Test': '',
+            'FILLER': '',
+        }
+
+        assigned_subjects: dict[str, str] = {}  # subject → session_name
+        for subject, data in subject_data.items():
+            level = _calculate_post_tabe_level(data['level'], data['score'], subject)
+            if not level:
+                c.print(f"[yellow]Could not determine NTA level for TABEID {tabeid} ({subject}, level {data['level']}, score {data['score']}). Skipping subject.[/yellow]")
+                continue
+            session_name = f"C{classNo}_14{subject}_{level}{session_suffix}"
+            row = {
+                **base_row,
+                'Test Session Name': session_name,
+                'Test': 'T14',
+                'Reading Level': f'14{level}' if subject == 'READ' else '',
+                'Mathematics Level': f'14{level}' if subject == 'MATH' else '',
+                'Language Level': f'14{level}' if subject == 'LANG' else '',
+            }
+            rows.append(row)
+            assigned_subjects[subject] = session_name
+            c.print(f"  {demo['last_name']}, {demo['first_name']} → {session_name}")
+
+        if assigned_subjects:
+            roster_rows.append({
+                'Last Name': demo['last_name'] or '',
+                'First Name': demo['first_name'] or '',
+                'Group': demo.get('group') or '',
+                'Platoon': demo.get('platoon') or '',
+                'TABEID': tabeid,
+                'Reading': 'Y' if 'READ' in assigned_subjects else '',
+                'Mathematics': 'Y' if 'MATH' in assigned_subjects else '',
+                'Language': 'Y' if 'LANG' in assigned_subjects else '',
+            })
+
+    roster_rows.sort(key=lambda r: (str(r['Group']), r['Last Name']))
+
+    c.print(f"\nWriting {len(rows)} assignment rows to {filename}...")
+    with open(file_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=header, extrasaction='ignore')
+        writer.writeheader()
+        writer.writerows(rows)
+    c.print(f"[green]Assignment file saved to {file_path}[/green]")
+
+    c.print(f"Writing {len(roster_rows)} roster rows to {roster_filename}...")
+    with open(roster_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=roster_header, extrasaction='ignore')
+        writer.writeheader()
+        writer.writerows(roster_rows)
+    c.print(f"[green]Roster saved to {roster_path}[/green]")
+
+
 def main():
     while (True):
         c.print("\n")
@@ -413,9 +702,10 @@ def main():
         c.print("1: Generate TABE FORM 11/12 export file")
         c.print("2: Generate TABE FORM 13/14 pre-test export file")
         c.print("3: Generate TABE FORM 14 post-test assignment file")
-        c.print("4: Exit")
+        c.print("4: Generate TABE FORM 14 retake assignment file")
+        c.print("5: Exit")
 
-        option = Prompt.ask("Enter your choice:", choices=["1", "2", "3", "4"])
+        option = Prompt.ask("Enter your choice:", choices=["1", "2", "3", "4", "5"])
 
         if option == "1":
             export_1112()
@@ -425,6 +715,9 @@ def main():
             round_num = Prompt.ask("Round number", default="1")
             export_post_tabe_14(round=int(round_num))
         elif option == "4":
+            suffix = Prompt.ask("Session suffix (2 for first retake, 3 for second, etc.)", default="2")
+            export_retake_tabe_14(session_suffix=int(suffix))
+        elif option == "5":
             exit()
 
 
