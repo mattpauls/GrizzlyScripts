@@ -550,19 +550,20 @@ def export_retake_tabe_14(session_suffix: int = 2) -> None:
         pre = pre_scores.get(tabeid, {})
         post = post_scores.get(tabeid, {})
 
-        # Gate: only include students whose average valid post score decreased.
-        # avg_diff is None when all post scores are N/A (no valid pairs to average),
-        # which also qualifies since the student couldn't be measured.
-        diffs = []
-        for subj in ['READ', 'MATH', 'LANG']:
-            if subj in pre and subj in post and post[subj] is not None:
-                try:
-                    diffs.append(float(post[subj]) - float(pre[subj]['score']))
-                except (ValueError, TypeError):
-                    pass
-        avg_diff = sum(diffs) / len(diffs) if diffs else None
-        if avg_diff is not None and avg_diff > 0:
-            continue
+        # Gate: always include students with any N/A post score.
+        # For students with no N/A, only include if average valid score decreased (avg_diff <= 0).
+        has_na = any(subj in post and post[subj] is None for subj in ['READ', 'MATH', 'LANG'])
+        if not has_na:
+            diffs = []
+            for subj in ['READ', 'MATH', 'LANG']:
+                if subj in pre and subj in post and post[subj] is not None:
+                    try:
+                        diffs.append(float(post[subj]) - float(pre[subj]['score']))
+                    except (ValueError, TypeError):
+                        pass
+            avg_diff = sum(diffs) / len(diffs) if diffs else None
+            if avg_diff is None or avg_diff > 0:
+                continue
 
         subjects_for_retake: dict[str, dict] = {}
 
