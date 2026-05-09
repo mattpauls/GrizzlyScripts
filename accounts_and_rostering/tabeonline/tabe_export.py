@@ -571,15 +571,13 @@ def export_retake_tabe_14(session_suffix: int = 2) -> None:
             if subj not in pre or subj not in post:
                 continue
             if post[subj] is None:
-                # N/A: assign based on pre-test score (expected next level)
+                # N/A: retake at the same level as the original post-test assignment
                 subjects_for_retake[subj] = pre[subj].copy()
             else:
                 try:
                     if float(post[subj]) <= float(pre[subj]['score']):
-                        subjects_for_retake[subj] = {
-                            'score': post[subj],
-                            'level': pre[subj]['level'],
-                        }
+                        # No improvement: retake at the same level as the original post-test assignment
+                        subjects_for_retake[subj] = pre[subj].copy()
                 except (ValueError, TypeError):
                     pass
 
