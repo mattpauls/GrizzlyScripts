@@ -1,0 +1,3 @@
+python-fmrest
+boto3
+python-dotenv
