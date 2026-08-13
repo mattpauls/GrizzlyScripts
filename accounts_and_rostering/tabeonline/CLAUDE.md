@@ -51,7 +51,32 @@ FMS_PASSWORD       # API user credentials
 FMS_DATABASE       # FileMaker database name
 FMS_LAYOUT         # FileMaker layout name (typically "CADETAPI")
 FMS_LIMIT          # Record retrieval limit (default: 500)
+
+# MySQL configuration (post-test and retake exports)
+MYSQL_HOST         # Database host
+MYSQL_PORT         # Database port (default: 3306; DigitalOcean managed uses 25060)
+MYSQL_DATABASE     # Database name
+MYSQL_USERNAME     # Read-only user
+MYSQL_PASSWORD     # Read-only user password
+MYSQL_SSL_CA       # Path to the CA certificate; required for DigitalOcean, omit for local
 ```
+
+### MySQL access
+
+`export_post_tabe_14()`, `export_retake_tabe_14()`, and `export_retake_tabe_13()` read from
+MySQL via the `mysql_connect()` helper. The script only ever issues `SELECT`s, so the
+configured user needs read access to exactly four tables:
+
+- `Assessment_TABE`
+- `Assessment_TABE_Cycle_Detail`
+- `Cycle_Detail`
+- `Person`
+
+When `MYSQL_SSL_CA` is set, the connection verifies the server certificate against that CA
+and checks the hostname (`ssl_verify_identity`). DigitalOcean managed databases enforce TLS,
+so download the cluster's CA certificate and point `MYSQL_SSL_CA` at it. Also add the client
+machine's IP to the cluster's trusted sources — a cluster with no trusted sources configured
+is reachable from any IP.
 
 ## Running the Script
 
@@ -69,6 +94,7 @@ The script presents a menu:
 
 - Python 3.x
 - `fmrest` - FileMaker Data API client
+- `mysql-connector-python` - MySQL client for the post-test and retake exports
 - `python-dotenv` - Environment variable management
 - `rich` - Terminal UI (Console, Prompt)
 

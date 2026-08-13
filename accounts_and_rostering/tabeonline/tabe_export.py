@@ -22,7 +22,9 @@ from filemaker_api.filemaker_api import filemaker_get_records  # noqa
 
 c = Console()
 
-load_dotenv()
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+load_dotenv(SCRIPT_DIR / ".env")
 
 # Set variables
 classNo = str(os.getenv("CLASS_NUMBER"))
@@ -31,11 +33,36 @@ district_code = os.getenv("DISTRICT_CODE")
 school_code = os.getenv("SCHOOL_CODE")
 print("Output folder is:", outputfolder)
 
-# MySQL configuration (used by export_post_tabe_14)
+# MySQL configuration (used by the post-test and retake export functions)
 MYSQL_HOST = os.getenv("MYSQL_HOST")
+MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3306))
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
 MYSQL_USERNAME = os.getenv("MYSQL_USERNAME")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+# CA certificate for a managed database (DigitalOcean requires TLS on port 25060).
+# Leave unset when pointing at a plain local server. A relative path resolves against
+# this script's folder, so MYSQL_SSL_CA=ca-certificate.crt works from any directory.
+_mysql_ssl_ca = os.getenv("MYSQL_SSL_CA")
+MYSQL_SSL_CA = str(SCRIPT_DIR / os.path.expanduser(_mysql_ssl_ca)) if _mysql_ssl_ca else None
+
+
+def mysql_connect():
+    """Open a MySQL connection, verifying the server cert when a CA is configured."""
+    params = {
+        "host": MYSQL_HOST,
+        "port": MYSQL_PORT,
+        "database": MYSQL_DATABASE,
+        "user": MYSQL_USERNAME,
+        "password": MYSQL_PASSWORD,
+    }
+    if MYSQL_SSL_CA:
+        if not os.path.isfile(MYSQL_SSL_CA):
+            raise FileNotFoundError(
+                f"MYSQL_SSL_CA points at a file that does not exist: {MYSQL_SSL_CA}")
+        params["ssl_ca"] = MYSQL_SSL_CA
+        params["ssl_verify_identity"] = True
+    return mysql.connector.connect(**params)
+
 
 # Level order (lowest to highest) and the level to drop to on a retake
 # after an N/A (no statistically significant result) on the pre-test.
@@ -238,13 +265,10 @@ def export_post_tabe_14(round: int = 1) -> None:
     file_path = os.path.join(outputfolder, filename)
     class_number = int(classNo)
 
+    connection = None
+    cursor = None
     try:
-        connection = mysql.connector.connect(
-            host=MYSQL_HOST,
-            database=MYSQL_DATABASE,
-            user=MYSQL_USERNAME,
-            password=MYSQL_PASSWORD
-        )
+        connection = mysql_connect()
         cursor = connection.cursor(dictionary=True)
 
         # --- Query 1: pre-test assessment records ---
@@ -294,8 +318,9 @@ def export_post_tabe_14(round: int = 1) -> None:
         c.print(f"[bold red]MySQL error: {e}[/bold red]")
         raise
     finally:
-        if connection.is_connected():
+        if cursor is not None:
             cursor.close()
+        if connection is not None and connection.is_connected():
             connection.close()
 
     # --- Build NTA assignments: {tabeid: {subject: level}} ---
@@ -441,13 +466,10 @@ def export_retake_tabe_14(session_suffix: int = 2) -> None:
     class_number = int(classNo)
     subject_map = {'Reading': 'READ', 'Mathematics': 'MATH', 'Language': 'LANG'}
 
+    connection = None
+    cursor = None
     try:
-        connection = mysql.connector.connect(
-            host=MYSQL_HOST,
-            database=MYSQL_DATABASE,
-            user=MYSQL_USERNAME,
-            password=MYSQL_PASSWORD
-        )
+        connection = mysql_connect()
         cursor = connection.cursor(dictionary=True)
 
         cursor.execute(f"""
@@ -513,8 +535,9 @@ def export_retake_tabe_14(session_suffix: int = 2) -> None:
         c.print(f"[bold red]MySQL error: {e}[/bold red]")
         raise
     finally:
-        if connection.is_connected():
+        if cursor is not None:
             cursor.close()
+        if connection is not None and connection.is_connected():
             connection.close()
 
     # Build pre-test lookup: {tabeid: {subject: {'score': ..., 'level': ...}}}
@@ -727,13 +750,10 @@ def export_retake_tabe_13(session_suffix: int = 2) -> None:
     class_number = int(classNo)
     subject_map = {'Reading': 'READ', 'Mathematics': 'MATH', 'Language': 'LANG'}
 
+    connection = None
+    cursor = None
     try:
-        connection = mysql.connector.connect(
-            host=MYSQL_HOST,
-            database=MYSQL_DATABASE,
-            user=MYSQL_USERNAME,
-            password=MYSQL_PASSWORD
-        )
+        connection = mysql_connect()
         cursor = connection.cursor(dictionary=True)
 
         cursor.execute(f"""
@@ -782,8 +802,9 @@ def export_retake_tabe_13(session_suffix: int = 2) -> None:
         c.print(f"[bold red]MySQL error: {e}[/bold red]")
         raise
     finally:
-        if connection.is_connected():
+        if cursor is not None:
             cursor.close()
+        if connection is not None and connection.is_connected():
             connection.close()
 
     # Determine retake subjects per student: any subject with an N/A pre-test
